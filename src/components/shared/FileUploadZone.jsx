@@ -87,7 +87,6 @@ const FileUploadZone = ({
 
   // Dynamic labels based on file type accepted
   const isPdf = accept && accept.includes('pdf');
-  const uploadIcon = isPdf ? '📄' : '📷';
   const uploadTitle = isPdf
     ? 'Select Or Drag & Drop PDF Here'
     : 'Select Or Drag & Drop Image Here';
@@ -95,6 +94,33 @@ const FileUploadZone = ({
     ? 'Supports PDF format'
     : 'Supports JPG, PNG, WEBP, HEIC formats';
   const buttonLabel = isPdf ? 'Select PDF' : 'Select Image';
+
+  // Realistic SVG icons — camera for images, document for PDFs
+  const UploadIcon = isPdf ? (
+    // Realistic PDF document icon
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-2 sm:mb-3 drop-shadow-md" fill="none">
+      <rect x="8" y="4" width="36" height="48" rx="4" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1.5"/>
+      <path d="M36 4 L44 12 L36 12 Z" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1.5"/>
+      <rect x="14" y="22" width="24" height="3" rx="1.5" fill="#94a3b8"/>
+      <rect x="14" y="29" width="18" height="3" rx="1.5" fill="#94a3b8"/>
+      <rect x="14" y="36" width="21" height="3" rx="1.5" fill="#94a3b8"/>
+      <rect x="10" y="38" width="30" height="16" rx="3" fill="#ef4444"/>
+      <text x="25" y="50" textAnchor="middle" fill="white" fontSize="7" fontWeight="bold" fontFamily="Arial">PDF</text>
+    </svg>
+  ) : (
+    // Realistic camera icon
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-2 sm:mb-3 drop-shadow-md" fill="none">
+      <rect x="4" y="16" width="56" height="40" rx="6" fill="#334155" stroke="#475569" strokeWidth="1.5"/>
+      <rect x="4" y="16" width="56" height="8" rx="3" fill="#1e293b"/>
+      <rect x="10" y="18" width="14" height="4" rx="2" fill="#64748b"/>
+      <circle cx="32" cy="38" r="13" fill="#1e293b" stroke="#475569" strokeWidth="1.5"/>
+      <circle cx="32" cy="38" r="9" fill="#0f172a" stroke="#334155" strokeWidth="1"/>
+      <circle cx="32" cy="38" r="5.5" fill="#7c3aed"/>
+      <circle cx="29.5" cy="35.5" r="1.5" fill="white" opacity="0.5"/>
+      <circle cx="50" cy="22" r="3" fill="#64748b" stroke="#94a3b8" strokeWidth="1"/>
+      <rect x="22" y="13" width="8" height="5" rx="2" fill="#475569" stroke="#64748b" strokeWidth="1"/>
+    </svg>
+  );
 
   return (
     <div
@@ -132,7 +158,7 @@ const FileUploadZone = ({
       {/* Empty state — no file selected */}
       {!file && !preview ? (
         <div>
-          <div className="text-4xl sm:text-5xl lg:text-6xl mb-2 sm:mb-4">{uploadIcon}</div>
+          {UploadIcon}
           <h3 className="text-lg sm:text-xl font-semibold text-gray-700 dark:text-gray-200 mb-2">
             {uploadTitle}
           </h3>
