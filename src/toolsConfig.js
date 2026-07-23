@@ -488,7 +488,8 @@ export const toolsConfig = {
       description: "Convert PDF pages to JPG images",
       endpoint: `${config.API_BASE_URL}/api/tools/pdf-to-jpg`,
       method: "POST",
-      fields: ["file", "dpi", "quality"]
+      fields: ["file", "dpi", "quality"],
+      accept: "application/pdf"
     }
   ],
   "Image Compression Tools": [

@@ -72,9 +72,15 @@ const GenericToolPage = () => {
       setSelectedFile(file);
       setError(null);
       setResult(null);
-      const reader = new FileReader();
-      reader.onload = (e) => setPreview(e.target.result);
-      reader.readAsDataURL(file);
+      // Only generate a preview for image files — PDFs cannot render as <img> src
+      const isImage = file.type.startsWith('image/');
+      if (isImage) {
+        const reader = new FileReader();
+        reader.onload = (e) => setPreview(e.target.result);
+        reader.readAsDataURL(file);
+      } else {
+        setPreview(null); // PDF or other: show filename instead of broken image
+      }
     } else {
       // File was removed
       setSelectedFile(null);
@@ -494,7 +500,7 @@ const GenericToolPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
           {/* Left — Upload + Settings */}
           <div className="space-y-4 sm:space-y-6">
-            <FileUploadZone file={selectedFile} onFileSelect={handleFileSelect} preview={preview} accept="image/*" />
+            <FileUploadZone file={selectedFile} onFileSelect={handleFileSelect} preview={preview} accept={tool.accept || 'image/*'} />
 
             {selectedFile && (
               <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-md text-sm text-gray-600 dark:text-gray-400 space-y-1">
