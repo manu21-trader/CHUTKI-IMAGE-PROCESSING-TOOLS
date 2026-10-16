@@ -4,10 +4,15 @@ import { motion } from "framer-motion";
 import { toolsConfig } from "../toolsConfig";
 import ScrollEffect from "./shared/ScrollEffect";
 import FileUploadZone from "./shared/FileUploadZone";
+import { useAuth } from "../context/AuthContext";
+import { useUsage } from "../context/UsageContext";
+import { getProcessingErrorMessage } from "../utils/quotaError";
 
 const GenericToolPage = () => {
   const { toolName } = useParams();
   const navigate = useNavigate();
+  const { token } = useAuth();
+  const { refreshUsage } = useUsage();
   const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -157,6 +162,7 @@ const GenericToolPage = () => {
 
         const response = await fetchWithTimeout(tool.endpoint, {
           method: tool.method,
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
           body: formDataToSend,
         }, 60000); // 60s timeout per attempt
 
@@ -183,11 +189,11 @@ const GenericToolPage = () => {
             const isPng = contentType.includes('png');
             setResult({ type: 'image', url, filename: customFilename.trim() ? `${customFilename.trim()}.${isPng?'png':'jpg'}` : `processed-${Date.now()}.${isPng?'png':'jpg'}` });
           }
+          await refreshUsage();
           lastError = null;
           break; // Success — stop retrying
         } else {
-          const errorData = await response.json().catch(() => ({}));
-          lastError = errorData.error || `Server error (${response.status})`;
+          lastError = await getProcessingErrorMessage(response, `Server error (${response.status})`);
           if (response.status < 500) break; // Don't retry 4xx errors
         }
       } catch (err) {

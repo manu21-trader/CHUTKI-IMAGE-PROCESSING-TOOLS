@@ -51,6 +51,9 @@ import { validateEnvironment, getEnvironmentInfo } from "./utils/envValidation.j
 // Import modular tools router
 import authRoutes from "./routes/auth.js";
 import profileRoutes from "./routes/profile.js";
+import usageRoutes from "./routes/usage.js";
+import { protect } from "./middleware/auth.js";
+import { enforceMonthlyQuota } from "./middleware/quota.js";
 // Modular tool category routers (split from unified-tools.js)
 import compressorsRoutes from "./api/tools/compressors.js";
 import convertersRoutes from "./api/tools/converters.js";
@@ -308,6 +311,9 @@ app.use('/api/auth', authRoutes);
 // Profile routes
 app.use('/api/profile', profileRoutes);
 
+// Current user's monthly image processing usage
+app.use('/api/usage', usageRoutes);
+
 // ChatGPT API routes
 app.use('/api/chatgpt', chatgptRoutes);
 
@@ -315,7 +321,22 @@ app.use('/api/chatgpt', chatgptRoutes);
 app.use('/api/ai', aiChatRoutes);
 
 // ── Modular tool category routers (ORDER MATTERS: specific before generic) ──
-// Parse multipart forms ONCE for all tool routes to prevent stream-draining hangs
+// Every POST below this shared mount is an image-processing request. Authenticate
+// and reserve quota before parsing uploads so no category router or alias can
+// bypass usage enforcement. Public GET health/list routes pass through unchanged.
+const protectToolProcessing = (req, res, next) => {
+  if (req.method !== 'POST') return next();
+  return protect(req, res, next);
+};
+const enforceToolProcessingQuota = (req, res, next) => {
+  if (req.method !== 'POST') return next();
+  return enforceMonthlyQuota(req, res, next);
+};
+
+app.use('/api/tools', protectToolProcessing);
+app.use('/api/tools', enforceToolProcessingQuota);
+
+// Parse multipart forms ONCE for all tool routes to prevent stream-draining hangs.
 app.use('/api/tools', upload.any());
 
 // IMPORTANT: passport-photo-advanced MUST come BEFORE editorsRoutes

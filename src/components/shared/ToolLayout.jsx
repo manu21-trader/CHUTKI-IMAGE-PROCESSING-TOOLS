@@ -1,6 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
+import { useUsage } from '../../context/UsageContext';
+import { getProcessingErrorMessage } from '../../utils/quotaError';
 
 const ToolLayout = ({
   title,
@@ -12,6 +15,8 @@ const ToolLayout = ({
   maxFileSize = 10,
   showPreview = true
 }) => {
+  const { token } = useAuth();
+  const { refreshUsage } = useUsage();
   const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -70,6 +75,7 @@ const ToolLayout = ({
 
       const response = await fetch(endpoint, {
         method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         body: data,
       });
 
@@ -88,9 +94,9 @@ const ToolLayout = ({
           setResult({ type: 'image', url, blob });
           toast.success('Processing completed! Click download to save.');
         }
+        await refreshUsage();
       } else {
-        const error = await response.json();
-        toast.error(error.error || 'Processing failed');
+        toast.error(await getProcessingErrorMessage(response));
       }
     } catch (error) {
       console.error('Error:', error);

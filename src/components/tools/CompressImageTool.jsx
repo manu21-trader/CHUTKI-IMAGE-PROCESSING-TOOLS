@@ -3,9 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import config from '../../config';
 import FileUploadZone from '../shared/FileUploadZone';
+import { useAuth } from '../../context/AuthContext';
+import { useUsage } from '../../context/UsageContext';
+import { getProcessingErrorMessage } from '../../utils/quotaError';
 
 const CompressImageTool = () => {
   const navigate = useNavigate();
+  const { token } = useAuth();
+  const { refreshUsage } = useUsage();
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -58,7 +63,6 @@ const CompressImageTool = () => {
     });
 
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`${config.API_BASE_URL}/api/tools/image-compressor`, {
         method: 'POST',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {},
@@ -74,9 +78,9 @@ const CompressImageTool = () => {
           originalSize: fileInfo?.size
         });
         toast.success('Image compressed successfully!');
+        await refreshUsage();
       } else {
-        const error = await response.json();
-        toast.error(error.message || 'Compression failed');
+        toast.error(await getProcessingErrorMessage(response, '图片压缩失败，请稍后重试。'));
       }
     } catch (error) {
       toast.error('An error occurred');

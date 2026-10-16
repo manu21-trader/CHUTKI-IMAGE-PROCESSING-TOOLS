@@ -10,15 +10,38 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: true,
+    required: function () {
+      return this.provider === 'local';
+    },
     unique: true,
+    sparse: true,
     lowercase: true,
     trim: true
   },
   password: {
     type: String,
+    select: false,
     required: function () {
-      return !this.googleId; // Password required only if not Google user
+      return this.provider === 'local';
+    }
+  },
+
+  // Passwordless identity fields. Phone numbers must be normalized by the
+  // future SMS login flow before storage (for example, +8613800138000).
+  phone: {
+    type: String,
+    trim: true,
+    unique: true,
+    sparse: true,
+    required: function () {
+      return this.provider === 'phone';
+    }
+  },
+  providerUserId: {
+    type: String,
+    trim: true,
+    required: function () {
+      return this.provider === 'wechat' || this.provider === 'qq';
     }
   },
 
@@ -46,7 +69,7 @@ const userSchema = new mongoose.Schema({
   // Authentication provider
   provider: {
     type: String,
-    enum: ['local', 'google'],
+    enum: ['local', 'google', 'phone', 'wechat', 'qq'],
     default: 'local'
   },
 
@@ -174,8 +197,14 @@ const userSchema = new mongoose.Schema({
       enum: ['free', 'pro', 'enterprise'],
       default: 'free'
     },
-    startDate: Date,
-    endDate: Date,
+    startDate: {
+      type: Date,
+      default: Date.now
+    },
+    endDate: {
+      type: Date,
+      default: null
+    },
     status: {
       type: String,
       enum: ['active', 'expired', 'cancelled'],
@@ -219,9 +248,15 @@ const userSchema = new mongoose.Schema({
   timestamps: true // Adds createdAt and updatedAt
 });
 
-// Index for better query performance
-userSchema.index({ email: 1 });
-userSchema.index({ googleId: 1 });
+// A provider-scoped ID allows WeChat and QQ to use the same external ID value
+// without colliding. Existing Google users continue to work through googleId.
+userSchema.index(
+  { provider: 1, providerUserId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { providerUserId: { $type: 'string' } }
+  }
+);
 
 // Hash password before saving (only for local users)
 userSchema.pre('save', async function (next) {
@@ -248,7 +283,7 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 
 // Get user's display name
 userSchema.methods.getDisplayName = function () {
-  return this.name || this.email.split('@')[0];
+  return this.name || this.email?.split('@')[0] || this.phone || 'User';
 };
 
 // Update last login
@@ -409,10 +444,16 @@ userSchema.methods.clearPasswordResetToken = function () {
 userSchema.statics.findOrCreateGoogleUser = async function (profile) {
   try {
     // Try to find existing user by Google ID
-    let user = await this.findOne({ googleId: profile.id });
+    let user = await this.findOne({
+      $or: [
+        { googleId: profile.id },
+        { provider: 'google', providerUserId: profile.id }
+      ]
+    });
 
     if (user) {
       // Update user info and last login
+      user.providerUserId = profile.id;
       user.name = profile.displayName || user.name;
       user.avatar = profile.photos?.[0]?.value || user.avatar;
       user.lastLogin = new Date();
@@ -426,6 +467,7 @@ userSchema.statics.findOrCreateGoogleUser = async function (profile) {
     if (user) {
       // Link Google account to existing user
       user.googleId = profile.id;
+      user.providerUserId = profile.id;
       user.provider = 'google';
       user.avatar = profile.photos?.[0]?.value || user.avatar;
       user.isVerified = true;
@@ -437,6 +479,7 @@ userSchema.statics.findOrCreateGoogleUser = async function (profile) {
     // Create new Google user
     user = new this({
       googleId: profile.id,
+      providerUserId: profile.id,
       name: profile.displayName,
       email: profile.emails?.[0]?.value,
       avatar: profile.photos?.[0]?.value,

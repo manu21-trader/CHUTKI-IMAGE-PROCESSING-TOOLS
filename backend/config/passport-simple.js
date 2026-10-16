@@ -38,11 +38,17 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       }
 
       // Find or create user
-      let user = await User.findOne({ googleId: profile.id });
+      let user = await User.findOne({
+        $or: [
+          { googleId: profile.id },
+          { provider: 'google', providerUserId: profile.id }
+        ]
+      });
 
       if (user) {
         console.log('[PASSPORT-SIMPLE] Existing user found:', user.email);
         // Update last login
+        user.providerUserId = profile.id;
         user.lastLogin = new Date();
         await user.save();
         return done(null, user);
@@ -55,6 +61,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
         console.log('[PASSPORT-SIMPLE] Linking Google to existing user:', user.email);
         // Link Google account
         user.googleId = profile.id;
+        user.providerUserId = profile.id;
         user.provider = 'google';
         user.isVerified = true;
         user.lastLogin = new Date();
@@ -69,6 +76,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       console.log('[PASSPORT-SIMPLE] Creating new user');
       user = new User({
         googleId: profile.id,
+        providerUserId: profile.id,
         name: profile.displayName,
         email: profile.emails[0].value,
         avatar: profile.photos?.[0]?.value,

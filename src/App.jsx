@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { UsageProvider } from "./context/UsageContext";
 import useSmoothScroll from "./hooks/useSmoothScroll";
 import ScrollProgressBar from "./components/shared/ScrollProgressBar";
 import ScrollToTop from "./components/shared/ScrollToTop";
@@ -20,6 +21,7 @@ import ImageCompressionTools from "./components/tools/ImageCompressionTools";
 import AuthSuccess from "./components/AuthSuccess";
 import Logo from "./components/Logo";
 import LoadingSpinner from "./components/LoadingSpinner";
+import UsageStatusBar from "./components/UsageStatusBar";
 
 // Import individual tool components
 import PassportPhotoTool from "./components/tools/PassportPhotoTool";
@@ -217,6 +219,8 @@ function AppContent() {
         </div>
       </header>
 
+      <UsageStatusBar />
+
       {/* ========= FULLSCREEN MENU ========= */}
       <div
         className={`fixed inset-0 bg-black/70 backdrop-blur-sm z-50 transform transition-transform duration-500 ease-in-out ${menuOpen ? "translate-x-0" : "translate-x-full"
@@ -314,7 +318,9 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <UsageProvider>
+        <AppContent />
+      </UsageProvider>
     </AuthProvider>
   );
 }

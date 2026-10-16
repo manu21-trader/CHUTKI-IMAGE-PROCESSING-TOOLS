@@ -1,7 +1,6 @@
 import express from 'express';
 import passport from 'passport';
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
 import {
   register,
   login,
@@ -38,44 +37,7 @@ router.post('/forgot-password', requireDatabase, forgotPassword);
 router.post('/reset-password', requireDatabase, resetPassword);
 
 // Token verification endpoint
-router.get('/verify-token', async (req, res) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        message: 'No token provided',
-        error: 'NO_TOKEN_PROVIDED'
-      });
-    }
-
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    // Get user from database
-    const user = await User.findById(decoded.userId).select('-password');
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found',
-        error: 'USER_NOT_FOUND'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Token verified',
-      user
-    });
-  } catch (error) {
-    console.error('Token verification error:', error);
-    res.status(401).json({
-      success: false,
-      message: 'Invalid token',
-      error: 'INVALID_TOKEN'
-    });
-  }
-});
+router.get('/verify-token', requireDatabase, protect, verifyToken);
 
 // Status check endpoint for keep-alive monitoring (no auth required)
 router.get('/status', (req, res) => {
@@ -94,7 +56,7 @@ router.get('/status', (req, res) => {
   });
 });
 
-router.get('/verify', requireDatabase, verifyToken);
+router.get('/verify', requireDatabase, protect, verifyToken);
 
 // Protected routes
 router.get('/profile', requireDatabase, protect, getProfile);

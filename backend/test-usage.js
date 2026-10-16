@@ -1,0 +1,334 @@
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import net from 'node:net';
+import os from 'node:os';
+import path from 'node:path';
+import mongoose from 'mongoose';
+import sharp from 'sharp';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import { MONTHLY_QUOTA_LIMITS, PLAN_PRICING } from './config/quota.js';
+import { getPeriodKey } from './services/quotaService.js';
+
+const getAvailablePort = () => new Promise((resolve, reject) => {
+  const socket = net.createServer();
+  socket.once('error', reject);
+  socket.listen(0, '127.0.0.1', () => {
+    const { port } = socket.address();
+    socket.close(() => resolve(port));
+  });
+});
+
+const waitForDatabase = async (baseUrl, serverLogs) => {
+  const deadline = Date.now() + 45_000;
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(`${baseUrl}/api/auth/status`);
+      const body = await response.json();
+      if (response.ok && body.features?.database) return;
+    } catch (_) {
+      // Backend or MongoDB may still be starting.
+    }
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
+  throw new Error(`Backend did not connect to the test database.\n${serverLogs()}`);
+};
+
+const requestJson = async (url, options) => {
+  const response = await fetch(url, options);
+  const body = await response.json();
+  return { response, body };
+};
+
+let validImageBuffer;
+const createImageForm = (valid = true, fields = {}) => {
+  const form = new FormData();
+  const buffer = validImageBuffer && valid ? validImageBuffer : Buffer.from('not-an-image');
+  form.append('image', new Blob([buffer], { type: 'image/png' }), 'source.png');
+  Object.entries(fields).forEach(([key, value]) => form.append(key, String(value)));
+  return form;
+};
+
+const processImage = (baseUrl, tool, token, options = {}) => {
+  const { valid = true, fields = {}, headers = {} } = options;
+  return fetch(`${baseUrl}/api/tools/${tool}`, {
+    method: 'POST',
+    headers: token ? { ...headers, Authorization: `Bearer ${token}` } : headers,
+    body: createImageForm(valid, fields)
+  });
+};
+
+const register = (baseUrl, email) => requestJson(`${baseUrl}/api/auth/register`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ name: 'Usage Test User', email, password: 'test-password-123' })
+});
+
+const getUsage = (baseUrl, token) => requestJson(`${baseUrl}/api/usage/me`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
+
+let mongoServer;
+let databaseConnection;
+let backendProcess;
+let output = '';
+
+try {
+  assert.deepEqual(MONTHLY_QUOTA_LIMITS, { free: 5, pro: 500 });
+  assert.deepEqual(PLAN_PRICING.free, { monthlyPriceFen: 0, displayPrice: '¥0' });
+  assert.deepEqual(PLAN_PRICING.pro, { monthlyPriceFen: 1990, displayPrice: '¥19.9/月' });
+
+  // Beijing changes month at 16:00 UTC on the previous UTC calendar day.
+  assert.equal(getPeriodKey(new Date('2026-10-31T15:59:59.999Z')), '2026-10');
+  assert.equal(getPeriodKey(new Date('2026-10-31T16:00:00.000Z')), '2026-11');
+  assert.equal(getPeriodKey(new Date('2026-11-30T16:00:00.000Z')), '2026-12');
+
+  validImageBuffer = await sharp({
+    create: { width: 32, height: 32, channels: 3, background: '#663399' }
+  }).png().toBuffer();
+
+  const testDatabaseName = `chutki_usage_test_${Date.now()}`;
+  let mongoUri;
+
+  if (process.env.TEST_MONGODB_URI) {
+    const separator = process.env.TEST_MONGODB_URI.endsWith('/') ? '' : '/';
+    mongoUri = `${process.env.TEST_MONGODB_URI}${separator}${testDatabaseName}`;
+  } else {
+    mongoServer = await MongoMemoryServer.create({
+      binary: {
+        version: process.env.MONGOMS_VERSION || '7.0.14',
+        downloadDir: process.env.MONGOMS_DOWNLOAD_DIR || path.join(os.tmpdir(), 'chutki-mongodb-binaries')
+      }
+    });
+    mongoUri = mongoServer.getUri(testDatabaseName);
+  }
+
+  const port = await getAvailablePort();
+  const baseUrl = `http://127.0.0.1:${port}`;
+  backendProcess = spawn(process.execPath, ['server.js'], {
+    cwd: new URL('.', import.meta.url),
+    env: {
+      ...process.env,
+      PORT: String(port),
+      MONGODB_URI: mongoUri,
+      ENABLE_MONGODB: 'true',
+      JWT_SECRET: 'test-only-jwt-secret-that-is-long-enough',
+      SESSION_SECRET: 'test-only-session-secret-that-is-long-enough',
+      RESEND_API_KEY: 're_test_only_not-a-real-key',
+      NODE_ENV: 'test',
+      CLIENT_URL: 'http://localhost:5173'
+    },
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  backendProcess.stdout.on('data', chunk => { output += chunk.toString(); });
+  backendProcess.stderr.on('data', chunk => { output += chunk.toString(); });
+
+  await waitForDatabase(baseUrl, () => output);
+  databaseConnection = await mongoose.createConnection(mongoUri).asPromise();
+
+  // The real server route is the source of the public processing-tool inventory.
+  const toolList = await requestJson(`${baseUrl}/api/tools/list`);
+  assert.equal(toolList.response.status, 200);
+  assert.equal(toolList.body.count, 81);
+  assert.equal(toolList.body.tools.length, 81);
+
+  // Every advertised image tool, plus backend compatibility aliases, must reject
+  // unauthenticated requests before any image processing begins.
+  const aliases = [
+    'passport-photo',
+    'rotate-tool',
+    'flip-tool',
+    'add-text',
+    'compress-image',
+    'ocr',
+    'resize-35x45cm',
+    'resize-signature-50x20mm',
+    // compressors.js currently accepts any compress-* compatibility name.
+    'compress-arbitrary'
+  ];
+  const unauthenticatedResults = await Promise.all(
+    [...toolList.body.tools, ...aliases].map(tool => fetch(`${baseUrl}/api/tools/${tool}`, { method: 'POST' }))
+  );
+  unauthenticatedResults.forEach(response => assert.equal(response.status, 401));
+
+  const freeRegistration = await register(baseUrl, `free-${Date.now()}@example.com`);
+  assert.equal(freeRegistration.response.status, 201);
+  const freeToken = freeRegistration.body.token;
+  const currentPeriod = getPeriodKey();
+
+  const initialUsage = await getUsage(baseUrl, freeToken);
+  assert.deepEqual(initialUsage.body, {
+    plan: 'free', limit: 5, used: 0, remaining: 5, period: currentPeriod
+  });
+
+  const profilePlanInjection = await requestJson(`${baseUrl}/api/profile`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${freeToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: 'Still Free User',
+      plan: 'pro',
+      membershipStatus: 'active',
+      subscription: { plan: 'pro', status: 'active' }
+    })
+  });
+  assert.equal(profilePlanInjection.response.status, 200);
+  const usageAfterProfileInjection = await getUsage(baseUrl, freeToken);
+  assert.equal(usageAfterProfileInjection.body.plan, 'free');
+  assert.equal(usageAfterProfileInjection.body.limit, 5);
+
+  // Invalid processing must be refunded before the error response completes.
+  const failedProcessing = await processImage(baseUrl, 'rotate', freeToken, { valid: false });
+  assert.equal(failedProcessing.status, 500);
+  const usageAfterFailure = await getUsage(baseUrl, freeToken);
+  assert.equal(usageAfterFailure.body.used, 0);
+
+  // Request-controlled fields and headers must not elevate a database-backed plan.
+  const spoofedPlan = await processImage(baseUrl, 'grayscale', freeToken, {
+    fields: { plan: 'pro', membershipStatus: 'active' },
+    headers: { 'X-Plan': 'pro', 'X-Membership-Status': 'active' }
+  });
+  assert.equal(spoofedPlan.status, 200);
+  const usageAfterSpoof = await getUsage(baseUrl, freeToken);
+  assert.equal(usageAfterSpoof.body.plan, 'free');
+  assert.equal(usageAfterSpoof.body.limit, 5);
+  assert.equal(usageAfterSpoof.body.used, 1);
+
+  // Leave exactly one free request, then race ten valid requests for it.
+  for (let index = 1; index < 4; index += 1) {
+    const tool = index % 2 === 0 ? 'rotate' : 'flip';
+    const response = await processImage(baseUrl, tool, freeToken);
+    assert.equal(response.status, 200, `free request ${index + 1} should succeed`);
+  }
+
+  const beforeConcurrency = await getUsage(baseUrl, freeToken);
+  assert.equal(beforeConcurrency.body.used, 4);
+  assert.equal(beforeConcurrency.body.remaining, 1);
+
+  const concurrentResponses = await Promise.all(
+    Array.from({ length: 10 }, () => processImage(baseUrl, 'rotate', freeToken))
+  );
+  const concurrentSuccesses = concurrentResponses.filter(response => response.status === 200);
+  const concurrentRejections = concurrentResponses.filter(response => response.status === 429);
+  assert.equal(concurrentSuccesses.length, 1);
+  assert.equal(concurrentRejections.length, 9);
+  for (const response of concurrentRejections) {
+    assert.deepEqual(await response.json(), {
+      error: 'quota_exceeded',
+      message: 'Monthly usage limit reached',
+      plan: 'free',
+      limit: 5,
+      used: 5
+    });
+  }
+
+  const exhaustedUsage = await getUsage(baseUrl, freeToken);
+  assert.equal(exhaustedUsage.body.used, 5);
+  assert.equal(exhaustedUsage.body.remaining, 0);
+
+  const sixth = await processImage(baseUrl, 'rotate', freeToken);
+  assert.equal(sixth.status, 429);
+  assert.equal((await sixth.json()).error, 'quota_exceeded');
+
+  // With quota exhausted, every concrete public processing path must be stopped
+  // at the common quota entry, even if the tool request itself has no file.
+  const exhaustedCoverage = await Promise.all(
+    [...toolList.body.tools, ...aliases].map(tool => fetch(`${baseUrl}/api/tools/${tool}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${freeToken}` }
+    }))
+  );
+  exhaustedCoverage.forEach(response => assert.equal(response.status, 429));
+
+  const freeUserId = new mongoose.Types.ObjectId(freeRegistration.body.user.id);
+  const freeUsageRecords = await databaseConnection.collection('usages').find({ userId: freeUserId }).toArray();
+  assert.equal(freeUsageRecords.length, 1);
+  assert.equal(freeUsageRecords[0].periodKey, currentPeriod);
+  assert.equal(freeUsageRecords[0].usedCount, 5);
+
+  // Usage and health queries are system endpoints and must not consume quota.
+  const health = await requestJson(`${baseUrl}/api/tools/health`);
+  assert.equal(health.response.status, 200);
+  const usageQueryAgain = await getUsage(baseUrl, freeToken);
+  assert.equal(usageQueryAgain.body.used, 5);
+
+  // Only an active, unexpired pro membership stored in MongoDB receives 500.
+  const proRegistration = await register(baseUrl, `pro-${Date.now()}@example.com`);
+  assert.equal(proRegistration.response.status, 201);
+  await databaseConnection.collection('users').updateOne(
+    { _id: new mongoose.Types.ObjectId(proRegistration.body.user.id) },
+    {
+      $set: {
+        'subscription.plan': 'pro',
+        'subscription.status': 'active',
+        'subscription.endDate': new Date(Date.now() + 86_400_000)
+      }
+    }
+  );
+
+  const proUsage = await getUsage(baseUrl, proRegistration.body.token);
+  assert.equal(proUsage.body.plan, 'pro');
+  assert.equal(proUsage.body.limit, 500);
+
+  // Exercise every mounted processing category with valid images.
+  const categoryRequests = [
+    ['image-compressor', {}],
+    ['jpeg-to-png', {}],
+    ['resize-pixel', { width: 16, height: 16 }],
+    ['grayscale', {}],
+    ['passport-photo-advanced', { size: '2x2', dpi: 72 }]
+  ];
+  for (const [tool, fields] of categoryRequests) {
+    const response = await processImage(baseUrl, tool, proRegistration.body.token, { fields });
+    assert.equal(response.status, 200, `${tool} should still process a valid image`);
+  }
+  const proUsageAfter = await getUsage(baseUrl, proRegistration.body.token);
+  assert.equal(proUsageAfter.body.used, categoryRequests.length);
+  assert.equal(proUsageAfter.body.remaining, 500 - categoryRequests.length);
+
+  const inactiveRegistration = await register(baseUrl, `inactive-${Date.now()}@example.com`);
+  await databaseConnection.collection('users').updateOne(
+    { _id: new mongoose.Types.ObjectId(inactiveRegistration.body.user.id) },
+    { $set: { 'subscription.plan': 'pro', 'subscription.status': 'expired', 'subscription.endDate': new Date(Date.now() + 86_400_000) } }
+  );
+  const inactiveUsage = await getUsage(baseUrl, inactiveRegistration.body.token);
+  assert.equal(inactiveUsage.body.plan, 'free');
+  assert.equal(inactiveUsage.body.limit, 5);
+
+  const expiredRegistration = await register(baseUrl, `expired-${Date.now()}@example.com`);
+  await databaseConnection.collection('users').updateOne(
+    { _id: new mongoose.Types.ObjectId(expiredRegistration.body.user.id) },
+    { $set: { 'subscription.plan': 'pro', 'subscription.status': 'active', 'subscription.endDate': new Date(Date.now() - 1_000) } }
+  );
+  const expiredUsage = await getUsage(baseUrl, expiredRegistration.body.token);
+  assert.equal(expiredUsage.body.plan, 'free');
+  assert.equal(expiredUsage.body.limit, 5);
+
+  console.log('PASS all 81 public image tools and compatibility aliases require authentication');
+  console.log('PASS free users receive 5 monthly uses and the 6th returns quota_exceeded');
+  console.log('PASS ten concurrent requests can consume at most one remaining use');
+  console.log('PASS unsuccessful image processing is refunded before the response completes');
+  console.log('PASS plan spoofing via tool/profile fields or headers does not elevate quota');
+  console.log('PASS only active, unexpired database-backed pro membership receives 500 uses');
+  console.log('PASS /api/usage/me and GET /api/tools/health do not consume quota');
+  console.log('PASS all mounted image-processing categories still produce successful results');
+  console.log('PASS Beijing month boundaries map to the correct periodKey');
+  console.log('PASS one unique Usage record remains capped at usedCount 5');
+} finally {
+  if (backendProcess && backendProcess.exitCode === null) {
+    backendProcess.kill('SIGTERM');
+    await new Promise(resolve => {
+      const timer = setTimeout(resolve, 5_000);
+      backendProcess.once('exit', () => {
+        clearTimeout(timer);
+        resolve();
+      });
+    });
+  }
+  if (databaseConnection) {
+    await databaseConnection.dropDatabase();
+    await databaseConnection.close();
+  }
+  if (mongoServer) await mongoServer.stop();
+}

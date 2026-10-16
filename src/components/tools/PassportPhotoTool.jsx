@@ -6,9 +6,14 @@ import FileUploadZone from '../shared/FileUploadZone';
 import passportCountries from '../../data/passportCountries';
 import { detectFace, checkCompliance } from '../../utils/faceDetection';
 import FaceDetectionOverlay from '../FaceDetectionOverlay';
+import { useAuth } from '../../context/AuthContext';
+import { useUsage } from '../../context/UsageContext';
+import { getProcessingErrorMessage } from '../../utils/quotaError';
 
 const PassportPhotoTool = () => {
   const navigate = useNavigate();
+  const { token } = useAuth();
+  const { refreshUsage } = useUsage();
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -255,7 +260,6 @@ const PassportPhotoTool = () => {
     });
 
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`${config.API_BASE_URL}/api/tools/passport-photo`, {
         method: 'POST',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {},
@@ -288,9 +292,9 @@ const PassportPhotoTool = () => {
         } else {
           toast.success('Passport photos generated successfully!');
         }
+        await refreshUsage();
       } else {
-        const error = await response.json();
-        toast.error(error.message || 'Processing failed');
+        toast.error(await getProcessingErrorMessage(response));
       }
     } catch (error) {
       toast.error('An error occurred');

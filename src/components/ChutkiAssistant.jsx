@@ -5,12 +5,15 @@ import SpeechRecognition, { useSpeechRecognition } from "react-speech-recognitio
 import config from '../config';
 import { toolsConfig, getAllTools, searchTools, getToolByName } from '../toolsConfig';
 import { useAuth } from '../context/AuthContext';
+import { useUsage } from '../context/UsageContext';
+import { getProcessingErrorMessage } from '../utils/quotaError';
 
 // Lazy load heavy components
 const EmojiPicker = lazy(() => import("emoji-picker-react"));
 
 const ChutkiAssistant = React.memo(() => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, token } = useAuth();
+  const { refreshUsage } = useUsage();
   
   // Consolidated UI state
   const [uiState, setUiState] = useState({
@@ -519,6 +522,7 @@ Please upload an image first, then I can process it with **${toolName}**!
 
       const response = await fetch(tool.endpoint, {
         method: tool.method,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         body: formData
       });
 
@@ -564,16 +568,17 @@ ${JSON.stringify(data, null, 2)}
           };
           setChatState(prev => ({ ...prev, messages: [...prev.messages, successMsg] }));
         }
+        await refreshUsage();
       } else {
-        const errorData = await response.json();
+        const errorMessage = await getProcessingErrorMessage(response);
         const errorMsg = {
           id: Date.now(),
           role: 'assistant',
-          content: `**Processing Failed**
+          content: `**处理失败**
 
-**Error:** ${errorData.error || 'Unknown error'}
+**提示：** ${errorMessage}
 
-*Please try again or use a different tool.*`,
+*请稍后重试，或选择其他图片工具。*`,
           timestamp: new Date()
         };
         setChatState(prev => ({ ...prev, messages: [...prev.messages, errorMsg] }));
@@ -594,7 +599,7 @@ Failed to connect to the tool server. Please check your internet connection and 
     } finally {
       setUiState(prev => ({ ...prev, processingTool: null }));
     }
-  }, [chatState.selectedFile, updateUserProfile]);
+  }, [chatState.selectedFile, refreshUsage, token, updateUserProfile]);
 
   // NEW: Show all tools list
   const showAllTools = useCallback(() => {

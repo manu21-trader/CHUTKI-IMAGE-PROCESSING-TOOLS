@@ -60,7 +60,7 @@ const initialState = {
   isAuthenticated: false,
   user: null,
   token: null,
-  loading: false,
+  loading: true,
   error: null
 };
 
@@ -69,45 +69,45 @@ export const AuthProvider = ({ children }) => {
 
   // Check for existing token on app load
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const user = localStorage.getItem('user');
+    let cancelled = false;
 
-    if (token && user) {
-      try {
-        const parsedUser = JSON.parse(user);
-        dispatch({
-          type: 'LOGIN_SUCCESS',
-          payload: {
-            token,
-            user: parsedUser
-          }
-        });
-      } catch (error) {
-        console.error('Error parsing stored user data:', error);
-        // Don't remove token immediately, might be temporary parsing issue
-        // localStorage.removeItem('token');
-        // localStorage.removeItem('user');
+    const verifyStoredToken = async (token) => {
+      if (!token) {
+        if (!cancelled) dispatch({ type: 'LOGOUT' });
+        return;
       }
-    }
+
+      try {
+        const response = await fetch(`${config.API_BASE_URL}/api/auth/verify-token`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const data = await response.json();
+        if (cancelled) return;
+
+        if (response.ok && data.success) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+          dispatch({ type: 'LOGIN_SUCCESS', payload: { token, user: data.user } });
+          return;
+        }
+
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
+        dispatch({ type: 'LOGOUT' });
+      } catch (error) {
+        console.error('Unable to verify stored authentication:', error);
+        if (!cancelled) dispatch({ type: 'LOGOUT' });
+      }
+    };
+
+    verifyStoredToken(localStorage.getItem('token'));
 
     // Listen for storage events (OAuth login from other tabs/components)
     const handleStorageChange = (e) => {
       if (e.key === 'token' && e.newValue) {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          try {
-            const parsedUser = JSON.parse(storedUser);
-            dispatch({
-              type: 'LOGIN_SUCCESS',
-              payload: {
-                token: e.newValue,
-                user: parsedUser
-              }
-            });
-          } catch (error) {
-            console.error('Error parsing user data from storage event:', error);
-          }
-        }
+        verifyStoredToken(e.newValue);
       } else if (e.key === 'token' && !e.newValue) {
         // Token was removed (logout)
         dispatch({ type: 'LOGOUT' });
@@ -117,6 +117,7 @@ export const AuthProvider = ({ children }) => {
     window.addEventListener('storage', handleStorageChange);
 
     return () => {
+      cancelled = true;
       window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
