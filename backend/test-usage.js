@@ -75,7 +75,7 @@ let output = '';
 try {
   assert.deepEqual(MONTHLY_QUOTA_LIMITS, { free: 5, pro: 500 });
   assert.deepEqual(PLAN_PRICING.free, { monthlyPriceFen: 0, displayPrice: '¥0' });
-  assert.deepEqual(PLAN_PRICING.pro, { monthlyPriceFen: 1990, displayPrice: '¥19.9/月' });
+  assert.deepEqual(PLAN_PRICING.pro, { monthlyPriceFen: 1990, displayPrice: '¥19.9 / 30天' });
 
   // Beijing changes month at 16:00 UTC on the previous UTC calendar day.
   assert.equal(getPeriodKey(new Date('2026-10-31T15:59:59.999Z')), '2026-10');
@@ -305,12 +305,21 @@ try {
   assert.equal(expiredUsage.body.plan, 'free');
   assert.equal(expiredUsage.body.limit, 5);
 
+  const noExpiryRegistration = await register(baseUrl, `no-expiry-${Date.now()}@example.com`);
+  await databaseConnection.collection('users').updateOne(
+    { _id: new mongoose.Types.ObjectId(noExpiryRegistration.body.user.id) },
+    { $set: { 'subscription.plan': 'pro', 'subscription.status': 'active', 'subscription.endDate': null } }
+  );
+  const noExpiryUsage = await getUsage(baseUrl, noExpiryRegistration.body.token);
+  assert.equal(noExpiryUsage.body.plan, 'free');
+  assert.equal(noExpiryUsage.body.limit, 5);
+
   console.log('PASS all 81 public image tools and compatibility aliases require authentication');
   console.log('PASS free users receive 5 monthly uses and the 6th returns quota_exceeded');
   console.log('PASS ten concurrent requests can consume at most one remaining use');
   console.log('PASS unsuccessful image processing is refunded before the response completes');
   console.log('PASS plan spoofing via tool/profile fields or headers does not elevate quota');
-  console.log('PASS only active, unexpired database-backed pro membership receives 500 uses');
+  console.log('PASS only active Pro membership with a future expiry receives 500 uses');
   console.log('PASS /api/usage/me and GET /api/tools/health do not consume quota');
   console.log('PASS all mounted image-processing categories still produce successful results');
   console.log('PASS Beijing month boundaries map to the correct periodKey');

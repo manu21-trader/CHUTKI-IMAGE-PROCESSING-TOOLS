@@ -19,7 +19,8 @@ export const getEffectivePlan = (user, now = new Date()) => {
   const subscription = user.subscription;
   const proIsActive = subscription?.plan === 'pro' &&
     subscription?.status === 'active' &&
-    (!subscription.endDate || subscription.endDate > now);
+    subscription?.endDate &&
+    subscription.endDate > now;
 
   return proIsActive ? 'pro' : 'free';
 };
