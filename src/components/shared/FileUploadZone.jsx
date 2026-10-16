@@ -88,12 +88,12 @@ const FileUploadZone = ({
   // Dynamic labels based on file type accepted
   const isPdf = accept && accept.includes('pdf');
   const uploadTitle = isPdf
-    ? 'Select Or Drag & Drop PDF Here'
-    : 'Select Or Drag & Drop Image Here';
+    ? '选择 PDF，或将文件拖到这里'
+    : '选择图片，或将文件拖到这里';
   const uploadHint = isPdf
-    ? 'Supports PDF format'
-    : 'Supports JPG, PNG, WEBP, HEIC formats';
-  const buttonLabel = isPdf ? 'Select PDF' : 'Select Image';
+    ? '支持 PDF 格式'
+    : '支持 JPG、PNG、WEBP、HEIC 格式';
+  const buttonLabel = isPdf ? '选择 PDF' : '选择图片';
 
   // Realistic SVG icons — camera for images, document for PDFs
   const UploadIcon = isPdf ? (
@@ -150,7 +150,7 @@ const FileUploadZone = ({
             <svg className="w-16 h-16 mx-auto mb-2 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
-            <p className="text-lg font-semibold">Drop your file here!</p>
+            <p className="text-lg font-semibold">松开即可上传文件</p>
           </div>
         </div>
       )}
@@ -193,7 +193,7 @@ const FileUploadZone = ({
             /* Image selected — show preview */
             <img
               src={preview}
-              alt="Preview"
+              alt="图片预览"
               className="max-w-full h-32 sm:h-48 lg:h-64 object-contain mx-auto rounded-lg shadow-lg"
             />
           )}
@@ -202,7 +202,7 @@ const FileUploadZone = ({
             onClick={handleRemove}
             className="mt-3 sm:mt-4 bg-red-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-red-600 transition-colors text-sm sm:text-base"
           >
-            Remove File
+            删除文件
           </button>
         </div>
       )}

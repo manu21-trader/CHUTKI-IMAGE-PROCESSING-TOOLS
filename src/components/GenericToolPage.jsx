@@ -7,6 +7,7 @@ import FileUploadZone from "./shared/FileUploadZone";
 import { useAuth } from "../context/AuthContext";
 import { useUsage } from "../context/UsageContext";
 import { getProcessingErrorMessage } from "../utils/quotaError";
+import { getToolDescriptionZh, getToolNameZh } from "../utils/toolText";
 
 const GenericToolPage = () => {
   const { toolName } = useParams();
@@ -45,7 +46,7 @@ const GenericToolPage = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading tool...</p>
+          <p className="text-gray-600 dark:text-gray-400">正在加载工具...</p>
         </div>
       </div>
     );
@@ -56,16 +57,16 @@ const GenericToolPage = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Tool Not Found
+            未找到该工具
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            The requested tool "{toolName}" could not be found.
+            暂时找不到您请求的工具“{toolName}”。
           </p>
           <button
             onClick={() => navigate("/")}
             className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors"
           >
-            Go Back Home
+            返回首页
           </button>
         </div>
       </div>
@@ -126,7 +127,7 @@ const GenericToolPage = () => {
     e.preventDefault();
     const noFileRequired = ['ai-face-generator'];
     if (!selectedFile && !noFileRequired.includes(toolName)) {
-      setError("Please select a file");
+      setError("请先选择文件。");
       return;
     }
 
@@ -155,7 +156,7 @@ const GenericToolPage = () => {
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         if (attempt > 1) {
-          setError(`⏳ Server is waking up... Retrying (${attempt}/${MAX_RETRIES})`);
+          setError(`⏳ 服务正在启动，正在重试（${attempt}/${MAX_RETRIES}）...`);
           await new Promise(r => setTimeout(r, 3000)); // Wait 3s before retry
           setError(null);
         }
@@ -178,7 +179,7 @@ const GenericToolPage = () => {
             const a = document.createElement('a'); a.href = url; a.download = ext;
             document.body.appendChild(a); a.click();
             window.URL.revokeObjectURL(url); document.body.removeChild(a);
-            setResult({ type: 'success', message: 'ZIP downloaded successfully!' });
+            setResult({ type: 'success', message: 'ZIP 文件下载成功！' });
           } else if (contentType.includes('application/pdf')) {
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
@@ -193,13 +194,13 @@ const GenericToolPage = () => {
           lastError = null;
           break; // Success — stop retrying
         } else {
-          lastError = await getProcessingErrorMessage(response, `Server error (${response.status})`);
+          lastError = await getProcessingErrorMessage(response, `图片处理失败（状态码 ${response.status}）。`);
           if (response.status < 500) break; // Don't retry 4xx errors
         }
       } catch (err) {
         lastError = err.name === 'AbortError'
-          ? 'Request timed out. The server may be starting up — please try again.'
-          : 'Connection failed. Please check your internet and try again.';
+          ? '请求超时，服务可能正在启动，请稍后重试。'
+          : '连接失败，请检查网络后重试。';
         console.error(`[Attempt ${attempt}] Error:`, err);
       }
     }
@@ -267,188 +268,188 @@ const GenericToolPage = () => {
     switch (field) {
       // ── Quality slider ──
       case 'quality': return (
-        <div key={field}>{label('Output Quality')}{slider('quality', 1, 100, 1, '%')}
-        {hint('Higher = better quality, larger file size')}</div>
+        <div key={field}>{label('输出质量')}{slider('quality', 1, 100, 1, '%')}
+        {hint('数值越高，画质越好，文件也越大')}</div>
       );
       // ── DPI dropdown ──
       case 'dpi': return (
-        <div key={field}>{label('DPI (Resolution)')}
-        {sel('dpi', [['72','72 DPI — Screen / Web'],['96','96 DPI — Low Print'],['150','150 DPI — Standard Print'],['200','200 DPI — Good Quality'],['300','300 DPI — High Quality (Recommended)'],['600','600 DPI — Professional Print']])}
-        {hint('300 DPI is recommended for most print applications')}</div>
+        <div key={field}>{label('DPI（分辨率）')}
+        {sel('dpi', [['72','72 DPI — 屏幕 / 网页'],['96','96 DPI — 低清打印'],['150','150 DPI — 标准打印'],['200','200 DPI — 较高质量'],['300','300 DPI — 高质量（推荐）'],['600','600 DPI — 专业打印']])}
+        {hint('大多数打印场景建议使用 300 DPI')}</div>
       );
       // ── Target KB ──
       case 'targetKB': return (
-        <div key={field}>{label('Target Size (KB)')}{num('targetKB', 1, 5000)}
-        {hint('The output image will be compressed to this size')}</div>
+        <div key={field}>{label('目标大小（KB）')}{num('targetKB', 1, 5000)}
+        {hint('输出图片将尽量压缩到该大小')}</div>
       );
       // ── Target Size (for increase) ──
       case 'targetSize': return (
-        <div key={field}>{label('Target Size (KB — Minimum)')}{num('targetSize', 50, 10000)}
-        {hint('The output image will be padded/upscaled to meet this minimum size')}</div>
+        <div key={field}>{label('目标大小（KB，最低值）')}{num('targetSize', 50, 10000)}
+        {hint('输出图片将通过填充或放大达到该最低大小')}</div>
       );
       // ── Target MB ──
       case 'targetMB': return (
-        <div key={field}>{label('Target Size (MB)')}
+        <div key={field}>{label('目标大小（MB）')}
         <input type="number" min="0.1" max="20" step="0.1" value={formData['targetMB'] ?? '1'}
           onChange={e => handleInputChange('targetMB', e.target.value)} className={cls} />
-        {hint('The output image will be compressed to this size in MB')}</div>
+        {hint('输出图片将尽量压缩到该 MB 大小')}</div>
       );
       // ── Intensity slider ──
       case 'intensity': return (
-        <div key={field}>{label('Effect Intensity')}{slider('intensity', 1, 50, 1)}
-        {hint('Controls the strength of the applied effect')}</div>
+        <div key={field}>{label('效果强度')}{slider('intensity', 1, 50, 1)}
+        {hint('调整处理效果的强弱')}</div>
       );
       // ── Contrast slider ──
       case 'contrast': return (
-        <div key={field}>{label('Contrast')}{slider('contrast', 0.5, 3.0, 0.1, 'x')}
-        {hint('1.0 = original, >1.0 = more contrast')}</div>
+        <div key={field}>{label('对比度')}{slider('contrast', 0.5, 3.0, 0.1, 'x')}
+        {hint('1.0 为原始效果，大于 1.0 会增强对比度')}</div>
       );
       // ── Pixel size ──
       case 'pixelSize': return (
-        <div key={field}>{label('Pixel Block Size')}{slider('pixelSize', 3, 80, 1, 'px')}
-        {hint('Larger value = more pixelated look')}</div>
+        <div key={field}>{label('像素块大小')}{slider('pixelSize', 3, 80, 1, 'px')}
+        {hint('数值越大，像素化效果越明显')}</div>
       );
       // ── Scale ──
       case 'scale': return (
-        <div key={field}>{label('Upscale Factor')}
-        {sel('scale', [['2','2x — Double resolution'],['3','3x — Triple resolution'],['4','4x — Quadruple resolution']])}
-        {hint('Higher scale = larger output, more processing time')}</div>
+        <div key={field}>{label('放大倍数')}
+        {sel('scale', [['2','2 倍分辨率'],['3','3 倍分辨率'],['4','4 倍分辨率']])}
+        {hint('倍数越高，输出越大，处理时间也越长')}</div>
       );
       // ── Opacity slider ──
       case 'opacity': return (
-        <div key={field}>{label('Opacity')}{slider('opacity', 0.0, 1.0, 0.05)}
-        {hint('0 = invisible, 1 = fully opaque')}</div>
+        <div key={field}>{label('不透明度')}{slider('opacity', 0.0, 1.0, 0.05)}
+        {hint('0 为完全透明，1 为完全不透明')}</div>
       );
       // ── Angle ──
       case 'angle': return (
-        <div key={field}>{label('Rotation Angle (degrees)')}
-        {sel('angle', [['90','90 deg Clockwise'],['180','180 deg Flip'],['270','270 deg Counter-clockwise'],['45','45 deg Diagonal'],['custom','Custom...']])}
-        {formData['angle'] === 'custom' && <input type="number" min="0" max="360" placeholder="Enter degrees" onChange={e => handleInputChange('angle', e.target.value)} className={`${cls} mt-2`} />}
+        <div key={field}>{label('旋转角度')}
+        {sel('angle', [['90','顺时针 90°'],['180','旋转 180°'],['270','逆时针 90°'],['45','旋转 45°'],['custom','自定义...']])}
+        {formData['angle'] === 'custom' && <input type="number" min="0" max="360" placeholder="输入角度" onChange={e => handleInputChange('angle', e.target.value)} className={`${cls} mt-2`} />}
         </div>
       );
       // ── Direction (flip/join) ──
       case 'direction': return (
-        <div key={field}>{label('Direction')}
-        {sel('direction', [['horizontal','Horizontal'],['vertical','Vertical']])}
+        <div key={field}>{label('方向')}
+        {sel('direction', [['horizontal','水平'],['vertical','垂直']])}
         </div>
       );
       // ── Flip direction ──
       case 'flipDirection': return (
-        <div key={field}>{label('Flip Direction')}
-        {sel('flipDirection', [['horizontal','↔ Horizontal (Mirror)'],['vertical','↕ Vertical (Upside Down)']])}
+        <div key={field}>{label('翻转方向')}
+        {sel('flipDirection', [['horizontal','↔ 水平翻转（镜像）'],['vertical','↕ 垂直翻转']])}
         </div>
       );
       // ── Format ──
       case 'format': return (
-        <div key={field}>{label('Output Format')}
-        {sel('format', [['jpeg','JPEG — Best for photos'],['png','PNG — Lossless, supports transparency'],['webp','WEBP — Modern, small file size']])}
+        <div key={field}>{label('输出格式')}
+        {sel('format', [['jpeg','JPEG — 适合照片'],['png','PNG — 无损且支持透明背景'],['webp','WEBP — 文件体积较小']])}
         </div>
       );
       // ── Background ──
       case 'background': return (
-        <div key={field}>{label('Background Color')}
+        <div key={field}>{label('背景颜色')}
         <div className="flex gap-3 items-center">
           <input type="color" value={formData['background'] ?? '#FFFFFF'}
             onChange={e => handleInputChange('background', e.target.value)}
             className="h-10 w-16 border-0 rounded cursor-pointer" />
-          {sel('background', [['#FFFFFF','White'],['#000000','Black'],['#0000FF','Blue'],['#F0F0F0','Light Grey'],['transparent','Transparent']])}
+          {sel('background', [['#FFFFFF','白色'],['#000000','黑色'],['#0000FF','蓝色'],['#F0F0F0','浅灰色'],['transparent','透明']])}
         </div></div>
       );
       // ── Maintain aspect ratio ──
       case 'maintain': return (
-        <div key={field}>{label('Maintain Aspect Ratio')}
-        {sel('maintain', [['true','Yes — Keep proportions'],['false','No — Stretch to fit']])}
+        <div key={field}>{label('保持宽高比')}
+        {sel('maintain', [['true','是 — 保持比例'],['false','否 — 拉伸适配']])}
         </div>
       );
       // ── Position ──
       case 'position': return (
-        <div key={field}>{label('Position')}
-        {sel('position', [['center','Center'],['bottom','Bottom'],['top','Top'],['top-left','Top Left'],['top-right','Top Right'],['bottom-left','Bottom Left'],['bottom-right','Bottom Right']])}
+        <div key={field}>{label('位置')}
+        {sel('position', [['center','居中'],['bottom','底部'],['top','顶部'],['top-left','左上'],['top-right','右上'],['bottom-left','左下'],['bottom-right','右下']])}
         </div>
       );
       // ── Language (OCR) ──
       case 'language': case 'lang': return (
-        <div key={field}>{label('OCR Language')}
-        {sel(field, [['eng','English'],['hin','Hindi'],['fra','French'],['spa','Spanish'],['deu','German'],['ita','Italian'],['por','Portuguese'],['chi_sim','Chinese (Simplified)']])}
-        {hint('Select the language of text in the image for best OCR accuracy')}</div>
+        <div key={field}>{label('OCR 文字语言')}
+        {sel(field, [['eng','英语'],['hin','印地语'],['fra','法语'],['spa','西班牙语'],['deu','德语'],['ita','意大利语'],['por','葡萄牙语'],['chi_sim','简体中文']])}
+        {hint('请选择图片中的文字语言，以提高 OCR 识别准确率')}</div>
       );
       // ── Page size (PDF) ──
       case 'pageSize': return (
-        <div key={field}>{label('Page Size')}
-        {sel('pageSize', [['A4','A4 (210 x 297 mm)'],['Letter','Letter (8.5 x 11 inch)'],['A5','A5 (148 x 210 mm)'],['A3','A3 (297 x 420 mm)'],['Legal','Legal (8.5 x 14 inch)']])}
+        <div key={field}>{label('页面尺寸')}
+        {sel('pageSize', [['A4','A4（210 × 297 mm）'],['Letter','Letter（8.5 × 11 英寸）'],['A5','A5（148 × 210 mm）'],['A3','A3（297 × 420 mm）'],['Legal','Legal（8.5 × 14 英寸）']])}
         </div>
       );
       // ── Width / Height numbers ──
       case 'width': return (
-        <div key={field}>{label('Width')}{num('width', 1, 10000)}
-        {hint('Enter width in the selected unit')}</div>
+        <div key={field}>{label('宽度')}{num('width', 1, 10000)}
+        {hint('请按所选单位输入宽度')}</div>
       );
       case 'height': return (
-        <div key={field}>{label('Height')}{num('height', 1, 10000)}
-        {hint('Enter height in the selected unit')}</div>
+        <div key={field}>{label('高度')}{num('height', 1, 10000)}
+        {hint('请按所选单位输入高度')}</div>
       );
       // ── Unit ──
       case 'unit': return (
-        <div key={field}>{label('Unit')}
-        {sel('unit', [['px','Pixels (px)'],['cm','Centimeters (cm)'],['mm','Millimeters (mm)'],['inch','Inches']])}
+        <div key={field}>{label('单位')}
+        {sel('unit', [['px','像素（px）'],['cm','厘米（cm）'],['mm','毫米（mm）'],['inch','英寸']])}
         </div>
       );
       // ── Rows / Cols ──
       case 'rows': return (
-        <div key={field}>{label('Rows')}{sel('rows', [['1','1'],['2','2'],['3','3'],['4','4'],['5','5']])}</div>
+        <div key={field}>{label('行数')}{sel('rows', [['1','1'],['2','2'],['3','3'],['4','4'],['5','5']])}</div>
       );
       case 'cols': return (
-        <div key={field}>{label('Columns')}{sel('cols', [['1','1'],['2','2'],['3','3'],['4','4'],['5','5']])}</div>
+        <div key={field}>{label('列数')}{sel('cols', [['1','1'],['2','2'],['3','3'],['4','4'],['5','5']])}</div>
       );
       // ── Spacing ──
       case 'spacing': return (
-        <div key={field}>{label('↔ Spacing (px between images)')}{slider('spacing', 0, 60, 2, 'px')}</div>
+        <div key={field}>{label('↔ 图片间距（px）')}{slider('spacing', 0, 60, 2, 'px')}</div>
       );
       // ── Text ──
       case 'text': return (
-        <div key={field}>{label('Watermark Text')}
-        <input type="text" placeholder="Enter watermark text" value={formData['text'] ?? ''}
+        <div key={field}>{label('水印文字')}
+        <input type="text" placeholder="输入水印文字" value={formData['text'] ?? ''}
           onChange={e => handleInputChange('text', e.target.value)} className={cls} />
         </div>
       );
       case 'name': return (
-        <div key={field}>{label('Name')}
-        <input type="text" placeholder="Enter full name" value={formData['name'] ?? ''}
+        <div key={field}>{label('姓名')}
+        <input type="text" placeholder="输入姓名" value={formData['name'] ?? ''}
           onChange={e => handleInputChange('name', e.target.value)} className={cls} />
         </div>
       );
       case 'dob': return (
-        <div key={field}>{label('Date of Birth')}
-        <input type="text" placeholder="DD/MM/YYYY" value={formData['dob'] ?? ''}
+        <div key={field}>{label('出生日期')}
+        <input type="text" placeholder="日/月/年" value={formData['dob'] ?? ''}
           onChange={e => handleInputChange('dob', e.target.value)} className={cls} />
         </div>
       );
       // ── Color text ──
       case 'color': return (
-        <div key={field}>{label('Text / Watermark Color')}
+        <div key={field}>{label('文字 / 水印颜色')}
         <div className="flex gap-3 items-center">
           <input type="color" value={formData['color'] ?? '#FFFFFF'}
             onChange={e => handleInputChange('color', e.target.value)}
             className="h-10 w-16 border-0 rounded cursor-pointer" />
-          <input type="text" placeholder="e.g. white, #FF0000" value={formData['color'] ?? ''}
+          <input type="text" placeholder="例如 white 或 #FF0000" value={formData['color'] ?? ''}
             onChange={e => handleInputChange('color', e.target.value)} className={cls} />
         </div></div>
       );
       // ── Font size ──
       case 'fontSize': return (
-        <div key={field}>{label('Font Size (px)')}{num('fontSize', 8, 200)}</div>
+        <div key={field}>{label('字号（px）')}{num('fontSize', 8, 200)}</div>
       );
       // ── X / Y coords ──
       case 'x': return (
-        <div key={field}>{label('X Position (px from left)')}{num('x', 0, 9999)}</div>
+        <div key={field}>{label('横向位置（距左侧 px）')}{num('x', 0, 9999)}</div>
       );
       case 'y': return (
-        <div key={field}>{label('Y Position (px from top)')}{num('y', 0, 9999)}</div>
+        <div key={field}>{label('纵向位置（距顶部 px）')}{num('y', 0, 9999)}</div>
       );
       // ── Border ──
       case 'border': return (
-        <div key={field}>{label('Circle Border Style')}
-        {sel('border', [['none','None'],['thin','Thin Border (2px)'],['thick','Thick Border (6px)']])}
+        <div key={field}>{label('圆形边框样式')}
+        {sel('border', [['none','无边框'],['thin','细边框（2px）'],['thick','粗边框（6px）']])}
         </div>
       );
       // ── Enhance checkbox ──
@@ -458,35 +459,35 @@ const GenericToolPage = () => {
             onChange={e => handleInputChange('enhance', e.target.checked ? 'true' : 'false')}
             className="w-4 h-4 text-purple-600 rounded" />
           <label htmlFor="enhance-cb" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-            Auto-enhance quality (sharpen, brightness, contrast)
+            自动增强画质（锐化、亮度、对比度）
           </label>
         </div>
       );
       // ── Style ──
       case 'style': return (
-        <div key={field}>{label('Signature Style')}
-        {sel('style', [['natural','Natural'],['sharp','Sharp & Bold'],['smooth','Smooth & Thin']])}
+        <div key={field}>{label('签名样式')}
+        {sel('style', [['natural','自然'],['sharp','清晰粗体'],['smooth','平滑细体']])}
         </div>
       );
       // ── Gender ──
       case 'gender': return (
-        <div key={field}>{label('Gender')}
-        {sel('gender', [['random','Random'],['male','Male'],['female','Female']])}
+        <div key={field}>{label('性别')}
+        {sel('gender', [['random','随机'],['male','男'],['female','女']])}
         </div>
       );
       // ── Age ──
       case 'age': return (
-        <div key={field}>{label('Age Group')}
-        {sel('age', [['adult','Adult (25-40)'],['young','Young (18-25)'],['senior','Senior (50+)'],['random','Random']])}
+        <div key={field}>{label('年龄段')}
+        {sel('age', [['adult','成年人（25～40 岁）'],['young','青年（18～25 岁）'],['senior','中老年（50 岁以上）'],['random','随机']])}
         </div>
       );
       // ── Max size ──
       case 'maxSize': return (
-        <div key={field}>{label('Max Output Size (KB)')}{num('maxSize', 10, 5000)}</div>
+        <div key={field}>{label('最大输出大小（KB）')}{num('maxSize', 10, 5000)}</div>
       );
       default: return (
         <div key={field}>
-          {label(field.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()))}
+          {label('参数设置')}
           <input type="text" placeholder={field} value={formData[field] ?? ''}
             onChange={e => handleInputChange(field, e.target.value)} className={cls} />
         </div>
@@ -499,8 +500,8 @@ const GenericToolPage = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800 dark:text-white mb-2 sm:mb-4">{tool.name}</h1>
-          <p className="text-sm sm:text-base lg:text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto px-2">{tool.description}</p>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800 dark:text-white mb-2 sm:mb-4">{getToolNameZh(tool.name)}</h1>
+          <p className="text-sm sm:text-base lg:text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto px-2">{getToolDescriptionZh(tool.name)}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
@@ -510,7 +511,7 @@ const GenericToolPage = () => {
 
             {selectedFile && (
               <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-md text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                <div className="font-semibold text-gray-800 dark:text-white mb-1">File Info</div>
+                <div className="font-semibold text-gray-800 dark:text-white mb-1">文件信息</div>
                 <div className="break-all">{selectedFile.name}</div>
                 <div>{(selectedFile.size / 1024).toFixed(1)} KB · {selectedFile.type}</div>
               </div>
@@ -519,7 +520,7 @@ const GenericToolPage = () => {
             {/* Tool Settings */}
             {tool.fields && tool.fields.filter(f => f !== 'file' && f !== 'files').length > 0 && (
               <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 shadow-lg">
-                <h3 className="text-base sm:text-lg font-semibold mb-4 text-gray-900 dark:text-white">Tool Settings</h3>
+                <h3 className="text-base sm:text-lg font-semibold mb-4 text-gray-900 dark:text-white">工具设置</h3>
                 <div className="space-y-4">
                   {tool.fields.map(field => renderFormField(field))}
                 </div>
@@ -528,12 +529,12 @@ const GenericToolPage = () => {
 
             {/* Output filename */}
             <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 shadow-lg">
-              <h3 className="text-base sm:text-lg font-semibold mb-3 text-gray-900 dark:text-white">Output Settings</h3>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Custom Filename (optional)</label>
-              <input type="text" placeholder="Enter filename without extension" value={customFilename}
+              <h3 className="text-base sm:text-lg font-semibold mb-3 text-gray-900 dark:text-white">输出设置</h3>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">自定义文件名（可选）</label>
+              <input type="text" placeholder="输入文件名，不含扩展名" value={customFilename}
                 onChange={(e) => setCustomFilename(e.target.value)}
                 className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white text-sm" />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave empty for auto-generated name</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">留空则自动生成文件名</p>
             </div>
 
             {/* Process Button */}
@@ -543,9 +544,9 @@ const GenericToolPage = () => {
               {loading ? (
                 <div className="flex items-center justify-center space-x-2">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  <span>Processing... (may take up to 60s on first use)</span>
+                  <span>正在处理...（首次使用可能需要约 60 秒）</span>
                 </div>
-              ) : `Process ${tool.name}`}
+              ) : `开始${getToolNameZh(tool.name)}`}
             </button>
           </div>
 
@@ -555,7 +556,7 @@ const GenericToolPage = () => {
               <svg className="w-6 h-6 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Result
+              处理结果
             </h2>
 
             {error && (
@@ -570,14 +571,14 @@ const GenericToolPage = () => {
                 {loading ? (
                   <>
                     <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-600 border-t-transparent mb-4"></div>
-                    <p className="text-gray-500 dark:text-gray-400 font-medium">Processing your image...</p>
+                    <p className="text-gray-500 dark:text-gray-400 font-medium">正在处理图片...</p>
                   </>
                 ) : (
                   <>
                     <svg className="w-16 h-16 text-gray-300 dark:text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <p className="text-gray-500 dark:text-gray-400 text-center px-4">Upload an image and click Process to see the result here</p>
+                    <p className="text-gray-500 dark:text-gray-400 text-center px-4">上传图片并点击处理，结果会显示在这里</p>
                   </>
                 )}
               </div>
@@ -587,14 +588,14 @@ const GenericToolPage = () => {
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                 {result.type === 'image' && (
                   <>
-                    <img src={result.url} alt="Processed result" className="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 object-contain max-h-96 bg-gray-50 dark:bg-gray-700" />
-                    <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-sm text-green-700 dark:text-green-300">✅ Image processed successfully!</div>
+                    <img src={result.url} alt="处理结果" className="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 object-contain max-h-96 bg-gray-50 dark:bg-gray-700" />
+                    <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-sm text-green-700 dark:text-green-300">✅ 图片处理成功！</div>
                     <button onClick={handleDownload}
                       className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-4 rounded-lg shadow-lg flex items-center justify-center transition-all hover:scale-105">
                       <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
-                      Download Image
+                      下载图片
                     </button>
                   </>
                 )}
@@ -602,20 +603,20 @@ const GenericToolPage = () => {
                   <>
                     <div className="flex flex-col items-center justify-center h-40 bg-red-50 dark:bg-red-900/20 rounded-xl border-2 border-red-200 dark:border-red-800">
                       <svg className="w-16 h-16 text-red-500 mb-2" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/></svg>
-                      <p className="text-red-700 dark:text-red-300 font-medium">PDF Ready</p>
+                      <p className="text-red-700 dark:text-red-300 font-medium">PDF 已生成</p>
                     </div>
                     <button onClick={handleDownload}
                       className="w-full bg-gradient-to-r from-red-600 to-orange-600 text-white font-semibold py-4 rounded-lg shadow-lg flex items-center justify-center">
                       <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
-                      Download PDF
+                      下载 PDF
                     </button>
                   </>
                 )}
                 {result.type === 'json' && (
                   <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200">
-                    <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-3">📊 Result</h4>
+                    <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-3">📊 处理结果</h4>
                     <pre className="text-sm text-blue-700 dark:text-blue-300 whitespace-pre-wrap overflow-auto max-h-64">{JSON.stringify(result.data, null, 2)}</pre>
                   </div>
                 )}

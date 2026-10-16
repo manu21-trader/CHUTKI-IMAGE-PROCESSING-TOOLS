@@ -53,12 +53,12 @@ const ResizePixelTool = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!file) {
-      toast.error('Please select an image');
+      toast.error('请先选择图片。');
       return;
     }
 
     if (!formData.width || !formData.height) {
-      toast.error('Please enter both width and height');
+      toast.error('请输入宽度和高度。');
       return;
     }
 
@@ -105,16 +105,16 @@ const ResizePixelTool = () => {
         
         // Show resize results toast
         if (resizeInfo) {
-          toast.success(`Image resized from ${resizeInfo.originalWidth}x${resizeInfo.originalHeight} to ${resizeInfo.targetWidth}x${resizeInfo.targetHeight}`);
+          toast.success(`图片已从 ${resizeInfo.originalWidth} × ${resizeInfo.originalHeight} 调整为 ${resizeInfo.targetWidth} × ${resizeInfo.targetHeight}`);
         } else {
-          toast.success('Image resized successfully!');
+          toast.success('图片尺寸调整成功！');
         }
         await refreshUsage();
       } else {
         toast.error(await getProcessingErrorMessage(response, '图片尺寸调整失败，请稍后重试。'));
       }
     } catch (error) {
-      toast.error('An error occurred');
+      toast.error('处理时发生错误，请稍后重试。');
       console.error(error);
     } finally {
       setLoading(false);
@@ -145,12 +145,12 @@ const ResizePixelTool = () => {
             <svg className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back
+            返回
           </button>
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">Advanced Pixel Resize</h1>
-          <p className="text-gray-600 dark:text-gray-400 text-lg">Resize images with professional quality and advanced options</p>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">按像素调整图片尺寸</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-lg">精确设置图片宽高，并选择输出质量和缩放方式</p>
           <span className="inline-block mt-3 px-4 py-1.5 bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded-full text-sm font-medium">
-            Image Editing
+            图片编辑
           </span>
         </div>
 
@@ -162,7 +162,7 @@ const ResizePixelTool = () => {
               <svg className="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
-              Upload Image & Resize Settings
+              上传图片与尺寸设置
             </h2>
             
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -177,11 +177,11 @@ const ResizePixelTool = () => {
               {/* File Info */}
               {fileInfo && (
                 <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
-                  <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-2">File Information</h3>
+                  <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-2">文件信息</h3>
                   <div className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-                    <p><span className="font-medium">Name:</span> {fileInfo.name}</p>
-                    <p><span className="font-medium">Size:</span> {fileInfo.size} KB</p>
-                    <p><span className="font-medium">Type:</span> {fileInfo.type}</p>
+                    <p><span className="font-medium">文件名：</span> {fileInfo.name}</p>
+                    <p><span className="font-medium">大小：</span> {fileInfo.size} KB</p>
+                    <p><span className="font-medium">类型：</span> {fileInfo.type}</p>
                   </div>
                 </div>
               )}
@@ -190,27 +190,27 @@ const ResizePixelTool = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Width (px)
+                    宽度（px）
                   </label>
                   <input
                     type="number"
                     value={formData.width}
                     onChange={(e) => setFormData({...formData, width: e.target.value})}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    placeholder="Enter width"
+                    placeholder="输入宽度"
                     min="1"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Height (px)
+                    高度（px）
                   </label>
                   <input
                     type="number"
                     value={formData.height}
                     onChange={(e) => setFormData({...formData, height: e.target.value})}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    placeholder="Enter height"
+                    placeholder="输入高度"
                     min="1"
                   />
                 </div>
@@ -226,7 +226,7 @@ const ResizePixelTool = () => {
                   className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                 />
                 <label htmlFor="maintainAspectRatio" className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                  Maintain aspect ratio
+                  保持宽高比
                 </label>
               </div>
 
@@ -240,14 +240,14 @@ const ResizePixelTool = () => {
                   className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                 />
                 <label htmlFor="smartCrop" className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                  Smart crop (maintain exact dimensions)
+                  智能裁剪（保持精确尺寸）
                 </label>
               </div>
 
               {/* Quality */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Quality: {formData.quality}%
+                  输出质量：{formData.quality}%
                 </label>
                 <input
                   type="range"
@@ -258,32 +258,32 @@ const ResizePixelTool = () => {
                   className="w-full"
                 />
                 <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
-                  <span>Low Quality</span>
-                  <span>High Quality</span>
+                  <span>较低质量</span>
+                  <span>较高质量</span>
                 </div>
               </div>
 
               {/* Resize Method */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Resize Method
+                  缩放方式
                 </label>
                 <select
                   value={formData.resizeMethod}
                   onChange={(e) => setFormData({...formData, resizeMethod: e.target.value})}
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
-                  <option value="lanczos3">Lanczos3 (Best Quality)</option>
-                  <option value="nearest">Nearest (Pixel Art)</option>
-                  <option value="cubic">Cubic (Good Balance)</option>
-                  <option value="mitchell">Mitchell (Sharp)</option>
+                  <option value="lanczos3">Lanczos3（最佳质量）</option>
+                  <option value="nearest">Nearest（适合像素画）</option>
+                  <option value="cubic">Cubic（质量与速度均衡）</option>
+                  <option value="mitchell">Mitchell（更锐利）</option>
                 </select>
               </div>
 
               {/* Format */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Output Format
+                  输出格式
                 </label>
                 <select
                   value={formData.format}
@@ -308,9 +308,9 @@ const ResizePixelTool = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Resizing...
+                    正在调整尺寸...
                   </span>
-                ) : 'Resize Image'}
+                ) : '调整图片尺寸'}
               </button>
             </form>
           </div>
@@ -321,31 +321,31 @@ const ResizePixelTool = () => {
               <svg className="w-6 h-6 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Result
+              处理结果
             </h2>
             
             {result ? (
               <div className="space-y-6">
-                <img src={result.url} alt="Result" className="w-full h-80 object-contain rounded-lg bg-gray-100 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600" />
+                <img src={result.url} alt="尺寸调整结果" className="w-full h-80 object-contain rounded-lg bg-gray-100 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600" />
                 
                 {/* Resize Info */}
                 {result.resizeInfo && (
                   <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg">
-                    <h3 className="font-medium text-green-800 dark:text-green-200 mb-2">Resize Information</h3>
+                    <h3 className="font-medium text-green-800 dark:text-green-200 mb-2">尺寸调整信息</h3>
                     <div className="text-sm text-green-700 dark:text-green-300 space-y-1">
-                      <p><span className="font-medium">Original Size:</span> {result.resizeInfo.originalWidth} x {result.resizeInfo.originalHeight} pixels</p>
-                      <p><span className="font-medium">Resized To:</span> {result.resizeInfo.targetWidth} x {result.resizeInfo.targetHeight} pixels</p>
-                      <p><span className="font-medium">Quality:</span> {result.resizeInfo.quality}%</p>
-                      <p><span className="font-medium">Format:</span> {result.resizeInfo.format.toUpperCase()}</p>
-                      <p><span className="font-medium">Resize Method:</span> {formData.resizeMethod}</p>
-                      <p><span className="font-medium">Aspect Ratio:</span> {formData.maintainAspectRatio ? 'Maintained' : 'Not Maintained'}</p>
-                      <p><span className="font-medium">Smart Crop:</span> {formData.smartCrop ? 'Enabled' : 'Disabled'}</p>
-                      <p><span className="font-medium">Upscaling:</span> {formData.upscaling ? 'Allowed' : 'Prevented'}</p>
+                      <p><span className="font-medium">原始尺寸：</span> {result.resizeInfo.originalWidth} × {result.resizeInfo.originalHeight} 像素</p>
+                      <p><span className="font-medium">调整后尺寸：</span> {result.resizeInfo.targetWidth} × {result.resizeInfo.targetHeight} 像素</p>
+                      <p><span className="font-medium">质量：</span> {result.resizeInfo.quality}%</p>
+                      <p><span className="font-medium">格式：</span> {result.resizeInfo.format.toUpperCase()}</p>
+                      <p><span className="font-medium">缩放方式：</span> {formData.resizeMethod}</p>
+                      <p><span className="font-medium">宽高比：</span> {formData.maintainAspectRatio ? '已保持' : '未保持'}</p>
+                      <p><span className="font-medium">智能裁剪：</span> {formData.smartCrop ? '已启用' : '未启用'}</p>
+                      <p><span className="font-medium">允许放大：</span> {formData.upscaling ? '是' : '否'}</p>
                       {result.resizeInfo.upscaled && (
-                        <p className="text-yellow-600 dark:text-yellow-400 font-medium">⚠️ Image was upscaled (may affect quality)</p>
+                        <p className="text-yellow-600 dark:text-yellow-400 font-medium">⚠️ 图片已被放大，可能影响画质</p>
                       )}
                       {result.resizeInfo.aspectRatioChanged && (
-                        <p className="text-yellow-600 dark:text-yellow-400 font-medium">⚠️ Aspect ratio was changed</p>
+                        <p className="text-yellow-600 dark:text-yellow-400 font-medium">⚠️ 图片宽高比已改变</p>
                       )}
                     </div>
                   </div>
@@ -358,7 +358,7 @@ const ResizePixelTool = () => {
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  Download Resized Image
+                  下载调整后的图片
                 </button>
               </div>
             ) : (
@@ -369,7 +369,7 @@ const ResizePixelTool = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <p className="text-gray-600 dark:text-gray-300 font-medium">Resizing your image...</p>
+                    <p className="text-gray-600 dark:text-gray-300 font-medium">正在调整图片尺寸...</p>
                   </>
                 ) : (
                   <>
@@ -377,7 +377,7 @@ const ResizePixelTool = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     <p className="text-gray-500 dark:text-gray-400 text-center text-base px-8">
-                      Upload and process a photo to see results
+                      上传图片并开始处理，结果会显示在这里
                     </p>
                   </>
                 )}

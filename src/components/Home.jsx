@@ -14,7 +14,7 @@ function Home() {
       <div className="relative flex items-center gap-2 bg-white dark:bg-gray-900 border border-purple-300/60 dark:border-purple-500/50 rounded-full px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5">
           <input
             type="text"
-            placeholder="Search tools..."
+            placeholder="搜索图片工具..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           className="flex-1 bg-transparent outline-none text-gray-900 dark:text-white placeholder-purple-400 dark:placeholder-purple-300 text-sm sm:text-base lg:text-lg"
@@ -32,11 +32,11 @@ function Home() {
       <ScrollEffect animation="fade-down" duration={1000}>
         <section className="text-center px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
           <h2 className="text-lg sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 dark:text-white">
-            Chutki Image Tool - Compress & Edit Pictures
+            CHUTKI 图片压缩与编辑工具
           </h2>
           <p className="max-w-2xl lg:max-w-4xl mx-auto text-sm sm:text-base lg:text-lg text-gray-600 dark:text-gray-300 mt-3 sm:mt-4 lg:mt-6 leading-relaxed px-2">
-            Chutki Image Tool is a collection of 100+ online tools like Image Compressor, Image Resize Tool,
-            and Image Conversion Tools (Image to JPG, Image to PNG, HEIC to JPG, Background Removal & More).
+            提供 100 多种在线图片工具，支持图片压缩、尺寸调整、格式转换、HEIC 转 JPG、
+            背景移除等常用操作。
           </p>
         </section>
       </ScrollEffect>

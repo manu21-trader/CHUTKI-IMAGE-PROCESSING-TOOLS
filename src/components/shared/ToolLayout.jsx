@@ -28,7 +28,7 @@ const ToolLayout = ({
     if (file) {
       // Validate file size
       if (file.size > maxFileSize * 1024 * 1024) {
-        toast.error(`File size must be less than ${maxFileSize}MB`);
+        toast.error(`文件大小不能超过 ${maxFileSize}MB。`);
         return;
       }
 
@@ -57,7 +57,7 @@ const ToolLayout = ({
 
   const handleSubmit = async (formData) => {
     if (!selectedFile) {
-      toast.error('Please select a file first');
+      toast.error('请先选择文件。');
       return;
     }
 
@@ -86,13 +86,13 @@ const ToolLayout = ({
           // Handle JSON response (e.g., OCR results)
           const jsonResult = await response.json();
           setResult({ type: 'json', data: jsonResult });
-          toast.success('Processing completed!');
+          toast.success('处理完成！');
         } else {
           // Handle image result - show preview first
           const blob = await response.blob();
           const url = window.URL.createObjectURL(blob);
           setResult({ type: 'image', url, blob });
-          toast.success('Processing completed! Click download to save.');
+          toast.success('处理完成，请点击下载保存。');
         }
         await refreshUsage();
       } else {
@@ -100,7 +100,7 @@ const ToolLayout = ({
       }
     } catch (error) {
       console.error('Error:', error);
-      toast.error('Processing failed');
+      toast.error('处理失败，请稍后重试。');
     } finally {
       setLoading(false);
     }
@@ -137,20 +137,20 @@ const ToolLayout = ({
                 <div>
                   <div className="text-4xl sm:text-5xl lg:text-6xl mb-3 sm:mb-4">📁</div>
                   <h3 className="text-base sm:text-lg lg:text-xl font-semibold text-gray-700 dark:text-gray-200 mb-2 px-2">
-                    Select Or Drag & Drop File Here
+                    选择文件，或将文件拖到这里
                   </h3>
                   <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">
-                    Max file size: {maxFileSize}MB
+                    文件最大支持 {maxFileSize}MB
                   </p>
                   <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg transition-colors text-sm sm:text-base">
-                    Select File
+                    选择文件
                   </button>
                 </div>
               ) : (
                 <div>
                   <img
                     src={preview}
-                    alt="Preview"
+                    alt="文件预览"
                     className="max-w-full h-40 sm:h-52 lg:h-64 object-contain mx-auto rounded-lg shadow-lg"
                   />
                   <button
@@ -162,7 +162,7 @@ const ToolLayout = ({
                     }}
                     className="mt-3 sm:mt-4 bg-red-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-red-600 transition-colors text-sm sm:text-base"
                   >
-                    Remove File
+                    删除文件
                   </button>
                 </div>
               )}
@@ -171,11 +171,11 @@ const ToolLayout = ({
             {/* File Info */}
             {selectedFile && (
               <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 shadow-lg">
-                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-white">File Information</h3>
+                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-white">文件信息</h3>
                 <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300">
-                  <div className="break-all"><span className="font-medium">Name:</span> {selectedFile.name}</div>
-                  <div><span className="font-medium">Size:</span> {(selectedFile.size / 1024).toFixed(1)} KB</div>
-                  <div><span className="font-medium">Type:</span> {selectedFile.type}</div>
+                  <div className="break-all"><span className="font-medium">文件名：</span> {selectedFile.name}</div>
+                  <div><span className="font-medium">大小：</span> {(selectedFile.size / 1024).toFixed(1)} KB</div>
+                  <div><span className="font-medium">类型：</span> {selectedFile.type}</div>
                 </div>
               </div>
             )}
@@ -183,7 +183,7 @@ const ToolLayout = ({
             {/* Results Display */}
             {result && result.type === 'json' && (
               <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 shadow-lg">
-                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-white">Results</h3>
+                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-white">处理结果</h3>
                 <pre className="bg-gray-100 dark:bg-gray-900 p-3 sm:p-4 rounded-lg text-xs sm:text-sm overflow-auto max-h-60 sm:max-h-96">
                   {JSON.stringify(result.data, null, 2)}
                 </pre>
@@ -193,10 +193,10 @@ const ToolLayout = ({
             {/* Image Result Display */}
             {result && result.type === 'image' && (
               <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 shadow-lg">
-                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-white">Result</h3>
+                <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-white">处理结果</h3>
                 <img
                   src={result.url}
-                  alt="Processed"
+                  alt="处理结果"
                   className="w-full h-64 object-contain rounded-lg bg-gray-100 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 mb-4"
                 />
                 <button
@@ -207,14 +207,14 @@ const ToolLayout = ({
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
-                    toast.success('File downloaded successfully!');
+                    toast.success('文件下载成功！');
                   }}
                   className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 px-6 rounded-lg transition-all transform hover:scale-105 active:scale-95 shadow-lg flex items-center justify-center"
                 >
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  Download Result
+                  下载结果
                 </button>
               </div>
             )}

@@ -47,7 +47,7 @@ const HEICtoJPGTool = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!file) {
-      toast.error('Please select an image');
+      toast.error('请先选择图片。');
       return;
     }
 
@@ -72,13 +72,13 @@ const HEICtoJPGTool = () => {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         setResult(url);
-        toast.success('HEIC converted to JPG successfully!');
+        toast.success('HEIC 已成功转换为 JPG！');
         await refreshUsage();
       } else {
         toast.error(await getProcessingErrorMessage(response, '图片转换失败，请稍后重试。'));
       }
     } catch (error) {
-      toast.error('An error occurred');
+      toast.error('处理时发生错误，请稍后重试。');
       console.error(error);
     } finally {
       setLoading(false);
@@ -106,12 +106,12 @@ const HEICtoJPGTool = () => {
             <svg className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back to Dashboard
+            返回工具列表
           </button>
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">HEIC to JPG</h1>
-          <p className="text-gray-600 dark:text-gray-400 text-lg">Process your images with professional quality</p>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">HEIC 转 JPG</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-lg">快速将 HEIC 图片转换为常用的 JPG 格式</p>
           <span className="inline-block mt-3 px-4 py-1.5 bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded-full text-sm font-medium">
-            Format Conversion
+            格式转换
           </span>
         </div>
 
@@ -123,7 +123,7 @@ const HEICtoJPGTool = () => {
               <svg className="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
-              Upload Image
+              上传图片
             </h2>
             
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -138,11 +138,11 @@ const HEICtoJPGTool = () => {
               {/* File Info */}
               {fileInfo && (
                 <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
-                  <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-2">File Information</h3>
+                  <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-2">文件信息</h3>
                   <div className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-                    <p><span className="font-medium">Name:</span> {fileInfo.name}</p>
-                    <p><span className="font-medium">Size:</span> {fileInfo.size} KB</p>
-                    <p><span className="font-medium">Type:</span> {fileInfo.type}</p>
+                    <p><span className="font-medium">文件名：</span> {fileInfo.name}</p>
+                    <p><span className="font-medium">大小：</span> {fileInfo.size} KB</p>
+                    <p><span className="font-medium">类型：</span> {fileInfo.type}</p>
                   </div>
                 </div>
               )}
@@ -150,7 +150,7 @@ const HEICtoJPGTool = () => {
               {/* Quality */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Quality: {formData.quality}%
+                  输出质量：{formData.quality}%
                 </label>
                 <input
                   type="range"
@@ -161,8 +161,8 @@ const HEICtoJPGTool = () => {
                   className="w-full"
                 />
                 <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
-                  <span>Low Quality</span>
-                  <span>High Quality</span>
+                  <span>较低质量</span>
+                  <span>较高质量</span>
                 </div>
               </div>
 
@@ -176,7 +176,7 @@ const HEICtoJPGTool = () => {
                   className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                 />
                 <label htmlFor="preserveMetadata" className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                  Preserve metadata (EXIF, GPS, etc.)
+                  保留元数据（EXIF、GPS 等）
                 </label>
               </div>
 
@@ -192,9 +192,9 @@ const HEICtoJPGTool = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Processing...
+                    正在转换...
                   </span>
-                ) : 'Process Image'}
+                ) : '开始转换'}
               </button>
             </form>
           </div>
@@ -205,12 +205,12 @@ const HEICtoJPGTool = () => {
               <svg className="w-6 h-6 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Result
+              转换结果
             </h2>
             
             {result ? (
               <div className="space-y-6">
-                <img src={result} alt="Result" className="w-full h-80 object-contain rounded-lg bg-gray-100 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600" />
+                <img src={result} alt="转换结果" className="w-full h-80 object-contain rounded-lg bg-gray-100 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600" />
                 <button
                   onClick={handleDownload}
                   className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-4 px-6 rounded-lg transition-all transform hover:scale-105 active:scale-95 shadow-lg flex items-center justify-center"
@@ -218,7 +218,7 @@ const HEICtoJPGTool = () => {
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  Download Image
+                  下载 JPG 图片
                 </button>
               </div>
             ) : (
@@ -229,7 +229,7 @@ const HEICtoJPGTool = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <p className="text-gray-600 dark:text-gray-300 font-medium">Processing your image...</p>
+                    <p className="text-gray-600 dark:text-gray-300 font-medium">正在转换图片...</p>
                   </>
                 ) : (
                   <>
@@ -237,7 +237,7 @@ const HEICtoJPGTool = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     <p className="text-gray-500 dark:text-gray-400 text-center text-base px-8">
-                      Upload and process a photo to see results
+                      上传 HEIC 图片并开始转换，结果会显示在这里
                     </p>
                   </>
                 )}

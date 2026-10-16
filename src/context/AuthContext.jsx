@@ -149,19 +149,19 @@ export const AuthProvider = ({ children }) => {
           }
         });
 
-        toast.success('Login successful!');
+        toast.success('登录成功！');
         return { success: true };
       } else {
         dispatch({
           type: 'LOGIN_FAILURE',
-          payload: data.message || 'Login failed'
+          payload: data.message || '登录失败'
         });
-        toast.error(data.message || 'Login failed');
+        toast.error('登录失败，请检查邮箱和密码。');
         return { success: false, error: data.message };
       }
     } catch (error) {
       console.error('Login error:', error);
-      const errorMessage = 'Network error. Please try again.';
+      const errorMessage = '网络连接异常，请稍后重试。';
       dispatch({
         type: 'LOGIN_FAILURE',
         payload: errorMessage
@@ -198,19 +198,19 @@ export const AuthProvider = ({ children }) => {
           }
         });
 
-        toast.success('Registration successful!');
+        toast.success('注册成功！');
         return { success: true };
       } else {
         dispatch({
           type: 'LOGIN_FAILURE',
-          payload: data.message || 'Registration failed'
+          payload: data.message || '注册失败'
         });
-        toast.error(data.message || 'Registration failed');
+        toast.error('注册失败，请检查填写的信息。');
         return { success: false, error: data.message };
       }
     } catch (error) {
       console.error('Registration error:', error);
-      const errorMessage = 'Network error. Please try again.';
+      const errorMessage = '网络连接异常，请稍后重试。';
       dispatch({
         type: 'LOGIN_FAILURE',
         payload: errorMessage
@@ -225,7 +225,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     dispatch({ type: 'LOGOUT' });
-    toast.success('Logged out successfully');
+    toast.success('已安全退出。');
   };
 
   // Update user profile
@@ -251,16 +251,16 @@ export const AuthProvider = ({ children }) => {
           payload: updatedUser
         });
 
-        toast.success('Profile updated successfully');
+        toast.success('个人资料已更新。');
         return { success: true };
       } else {
-        toast.error(data.message || 'Failed to update profile');
+        toast.error('个人资料更新失败。');
         return { success: false, error: data.message };
       }
     } catch (error) {
       console.error('Update profile error:', error);
-      toast.error('Network error. Please try again.');
-      return { success: false, error: 'Network error' };
+      toast.error('网络连接异常，请稍后重试。');
+      return { success: false, error: '网络连接异常' };
     }
   };
 

@@ -1,153 +1,153 @@
 // Comprehensive passport photo requirements database
 const passportCountries = {
   US: {
-    name: 'United States',
+    name: '美国',
     size: { width: 2, height: 2, unit: 'inches' },
     dpi: 300,
     background: '#FFFFFF',
     headSize: { min: 50, max: 69, percentage: 70 },
     eyeLevel: { percentage: 60 },
     requirements: [
-      'Head must be between 1 inch and 1 3/8 inches (25mm - 35mm) from bottom of chin to top of head',
-      'Photo must be taken within the last 6 months',
-      'White or off-white background',
-      'Face must be directly facing the camera',
-      'Neutral facial expression with both eyes open'
+      '下巴底部到头顶的距离应为 25mm～35mm',
+      '照片须为最近 6 个月内拍摄',
+      '使用白色或米白色背景',
+      '面部须正对镜头',
+      '保持自然表情并睁开双眼'
     ]
   },
   GB: {
-    name: 'United Kingdom',
+    name: '英国',
     size: { width: 35, height: 45, unit: 'mm' },
     dpi: 300,
     background: '#F5F5F5',
     headSize: { min: 29, max: 34, percentage: 80 },
     eyeLevel: { percentage: 50 },
     requirements: [
-      'Photo must be 35mm wide and 45mm high',
-      'Head must be between 29mm and 34mm from chin to crown',
-      'Plain light grey or cream background',
-      'Face must be in sharp focus and clear',
-      'No shadows on face or behind head'
+      '照片尺寸须为 35mm × 45mm',
+      '下巴到头顶的距离应为 29mm～34mm',
+      '使用纯浅灰色或米色背景',
+      '面部须清晰对焦',
+      '面部及头部后方不得有阴影'
     ]
   },
   CA: {
-    name: 'Canada',
+    name: '加拿大',
     size: { width: 50, height: 70, unit: 'mm' },
     dpi: 300,
     background: '#FFFFFF',
     headSize: { min: 31, max: 36, percentage: 70 },
     eyeLevel: { percentage: 60 },
     requirements: [
-      'Photo must be 50mm wide and 70mm high',
-      'Head must be between 31mm and 36mm from chin to crown',
-      'Plain white or light-colored background',
-      'Face must be in focus with neutral expression',
-      'Both eyes must be clearly visible'
+      '照片尺寸须为 50mm × 70mm',
+      '下巴到头顶的距离应为 31mm～36mm',
+      '使用纯白色或浅色背景',
+      '面部须清晰对焦并保持自然表情',
+      '双眼须清晰可见'
     ]
   },
   IN: {
-    name: 'India',
+    name: '印度',
     size: { width: 35, height: 45, unit: 'mm' },
     dpi: 300,
     background: '#FFFFFF',
     headSize: { min: 25, max: 35, percentage: 70 },
     eyeLevel: { percentage: 60 },
     requirements: [
-      'Photo must be 35mm wide and 45mm high',
-      'Head must be between 25mm and 35mm from chin to crown',
-      'White background',
-      'Face must be directly facing camera',
-      'Neutral expression with mouth closed'
+      '照片尺寸须为 35mm × 45mm',
+      '下巴到头顶的距离应为 25mm～35mm',
+      '使用白色背景',
+      '面部须正对镜头',
+      '保持自然表情并闭合嘴巴'
     ]
   },
   AU: {
-    name: 'Australia',
+    name: '澳大利亚',
     size: { width: 35, height: 45, unit: 'mm' },
     dpi: 300,
     background: '#F5F5F5',
     headSize: { min: 32, max: 36, percentage: 75 },
     eyeLevel: { percentage: 55 },
     requirements: [
-      'Photo must be 35mm wide and 45mm high',
-      'Head must be between 32mm and 36mm from chin to crown',
-      'Plain light-colored background',
-      'Face must be in sharp focus',
-      'Neutral expression with mouth closed'
+      '照片尺寸须为 35mm × 45mm',
+      '下巴到头顶的距离应为 32mm～36mm',
+      '使用纯浅色背景',
+      '面部须清晰对焦',
+      '保持自然表情并闭合嘴巴'
     ]
   },
   DE: {
-    name: 'Germany',
+    name: '德国',
     size: { width: 35, height: 45, unit: 'mm' },
     dpi: 300,
     background: '#F5F5F5',
     headSize: { min: 32, max: 36, percentage: 75 },
     eyeLevel: { percentage: 55 },
     requirements: [
-      'Photo must be 35mm wide and 45mm high',
-      'Head must be between 32mm and 36mm',
-      'Plain light grey background',
-      'Face must be centered and in focus',
-      'Neutral expression, mouth closed'
+      '照片尺寸须为 35mm × 45mm',
+      '头部高度应为 32mm～36mm',
+      '使用纯浅灰色背景',
+      '面部须居中并清晰对焦',
+      '保持自然表情并闭合嘴巴'
     ]
   },
   FR: {
-    name: 'France',
+    name: '法国',
     size: { width: 35, height: 45, unit: 'mm' },
     dpi: 300,
     background: '#F5F5F5',
     headSize: { min: 32, max: 36, percentage: 75 },
     eyeLevel: { percentage: 55 },
     requirements: [
-      'Photo must be 35mm wide and 45mm high',
-      'Head must be between 32mm and 36mm',
-      'Light grey or light blue background',
-      'Face must be centered',
-      'Neutral expression'
+      '照片尺寸须为 35mm × 45mm',
+      '头部高度应为 32mm～36mm',
+      '使用浅灰色或浅蓝色背景',
+      '面部须居中',
+      '保持自然表情'
     ]
   },
   JP: {
-    name: 'Japan',
+    name: '日本',
     size: { width: 35, height: 45, unit: 'mm' },
     dpi: 300,
     background: '#FFFFFF',
     headSize: { min: 32, max: 36, percentage: 75 },
     eyeLevel: { percentage: 55 },
     requirements: [
-      'Photo must be 35mm wide and 45mm high',
-      'Head must be between 32mm and 36mm',
-      'White or light blue background',
-      'Face must be directly facing camera',
-      'Neutral expression'
+      '照片尺寸须为 35mm × 45mm',
+      '头部高度应为 32mm～36mm',
+      '使用白色或浅蓝色背景',
+      '面部须正对镜头',
+      '保持自然表情'
     ]
   },
   CN: {
-    name: 'China',
+    name: '中国',
     size: { width: 33, height: 48, unit: 'mm' },
     dpi: 300,
     background: '#FFFFFF',
     headSize: { min: 28, max: 33, percentage: 70 },
     eyeLevel: { percentage: 60 },
     requirements: [
-      'Photo must be 33mm wide and 48mm high',
-      'Head must be between 28mm and 33mm',
-      'White background',
-      'Face must be centered',
-      'Neutral expression with eyes open'
+      '照片尺寸须为 33mm × 48mm',
+      '头部高度应为 28mm～33mm',
+      '使用白色背景',
+      '面部须居中',
+      '保持自然表情并睁开双眼'
     ]
   },
   BR: {
-    name: 'Brazil',
+    name: '巴西',
     size: { width: 50, height: 70, unit: 'mm' },
     dpi: 300,
     background: '#FFFFFF',
     headSize: { min: 32, max: 36, percentage: 70 },
     eyeLevel: { percentage: 60 },
     requirements: [
-      'Photo must be 50mm wide and 70mm high',
-      'Head must be between 32mm and 36mm',
-      'White background',
-      'Face must be in focus',
-      'Neutral expression'
+      '照片尺寸须为 50mm × 70mm',
+      '头部高度应为 32mm～36mm',
+      '使用白色背景',
+      '面部须清晰对焦',
+      '保持自然表情'
     ]
   }
 };

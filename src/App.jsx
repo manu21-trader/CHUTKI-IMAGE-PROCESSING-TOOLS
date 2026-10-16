@@ -85,7 +85,7 @@ function AppContent() {
 
   // Show loading spinner while checking authentication
   if (loading) {
-    return <LoadingSpinner message="Initializing CHUTKI..." />;
+    return <LoadingSpinner message="正在加载 CHUTKI..." />;
   }
 
   // Check localStorage as backup (optional purely for state sync, not for blocking)
@@ -165,8 +165,8 @@ function AppContent() {
             <button
               onClick={toggleTheme}
               className="rounded-full p-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm transition-all duration-300 hover:scale-105"
-              aria-label="Toggle Dark Mode"
-              title={darkMode ? "Light Mode" : "Dark Mode"}
+              aria-label="切换深色模式"
+              title={darkMode ? "切换为浅色模式" : "切换为深色模式"}
             >
               {darkMode ? (
                 <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -184,8 +184,8 @@ function AppContent() {
               <button
                 onClick={() => navigate('/login')}
                 className="rounded-full p-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105"
-                aria-label="Login"
-                title="Login / Register"
+                aria-label="登录"
+                title="登录 / 注册"
               >
                 <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -195,8 +195,8 @@ function AppContent() {
               <button
                 onClick={() => navigate('/profile')}
                 className="rounded-full p-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105"
-                aria-label="View Profile"
-                title="Profile"
+                aria-label="查看个人资料"
+                title="个人资料"
               >
                 <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -208,8 +208,8 @@ function AppContent() {
             <button
               onClick={toggleMenu}
               className="flex flex-col justify-center items-center gap-1 p-2 rounded-md bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/10 transition-all duration-300 hover:scale-105"
-              title="Menu"
-              aria-label="Open Menu"
+              title="菜单"
+              aria-label="打开菜单"
             >
               <span className="block w-5 h-0.5 bg-white rounded-full"></span>
               <span className="block w-5 h-0.5 bg-white rounded-full"></span>
@@ -229,7 +229,7 @@ function AppContent() {
         <button
           onClick={toggleMenu}
           className="absolute top-3 sm:top-4 right-3 sm:right-4 text-white text-xl sm:text-2xl lg:text-3xl hover:text-gray-300 z-10"
-          aria-label="Close Menu"
+          aria-label="关闭菜单"
         >
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -238,25 +238,25 @@ function AppContent() {
 
         <nav className="mt-12 sm:mt-16 lg:mt-20 flex flex-col items-start px-4 sm:px-6 lg:pl-10 space-y-3 sm:space-y-4 lg:space-y-6 text-white text-sm sm:text-base lg:text-lg font-semibold">
           {[
-            "Home",
-            "Merge PDF's",
-            "Resize Image Pixel",
-            "Passport Size Photo",
-            "Increase Image Size In KB",
-            "Remove Image Background",
-            "Convert DPI (200,300,600)",
-            "PDF To Images",
-            "Convert Image",
-            "Compress Image",
-            "Compress PDF",
-            "Crop Image",
+            { key: "Home", label: "首页" },
+            { key: "Merge PDF's", label: "图片合并为 PDF" },
+            { key: "Resize Image Pixel", label: "按像素调整图片尺寸" },
+            { key: "Passport Size Photo", label: "证件照制作" },
+            { key: "Increase Image Size In KB", label: "增大图片文件体积" },
+            { key: "Remove Image Background", label: "移除图片背景" },
+            { key: "Convert DPI (200,300,600)", label: "转换图片 DPI（200/300/600）" },
+            { key: "PDF To Images", label: "PDF 转图片" },
+            { key: "Convert Image", label: "图片格式转换" },
+            { key: "Compress Image", label: "压缩图片" },
+            { key: "Compress PDF", label: "压缩 PDF" },
+            { key: "Crop Image", label: "裁剪图片" },
           ].map((item, idx) => (
             <button
               key={idx}
-              onClick={() => handleNavigation(item)}
+              onClick={() => handleNavigation(item.key)}
               className="hover:text-purple-300 text-left transition-colors duration-200 py-1 px-2 hover:bg-white/10 rounded-md w-full"
             >
-              | {item}
+              | {item.label}
             </button>
           ))}
         </nav>

@@ -89,12 +89,12 @@ const PassportPhotoTool = () => {
   // Handle face detection
   const handleDetectFace = async () => {
     if (!preview || !imageRef.current) {
-      toast.error('Please upload an image first');
+      toast.error('请先上传图片。');
       return;
     }
 
     setDetectingFace(true);
-    toast.loading('Detecting face...', { id: 'face-detection' });
+    toast.loading('正在检测人脸...', { id: 'face-detection' });
 
     try {
       // Create image element from preview
@@ -109,13 +109,13 @@ const PassportPhotoTool = () => {
       const detection = await detectFace(img);
 
       if (!detection.success) {
-        toast.error(detection.error || 'No face detected', { id: 'face-detection' });
+        toast.error('未检测到清晰人脸，请更换图片后重试。', { id: 'face-detection' });
         setFaceDetection(null);
         return;
       }
 
       setFaceDetection(detection);
-      toast.success(`Face detected! Confidence: ${(detection.confidence * 100).toFixed(1)}%`, { id: 'face-detection' });
+      toast.success(`已检测到人脸，置信度 ${(detection.confidence * 100).toFixed(1)}%`, { id: 'face-detection' });
 
       // Check compliance
       const countryReqs = passportCountries[formData.country];
@@ -128,14 +128,14 @@ const PassportPhotoTool = () => {
         setComplianceResults(compliance);
 
         if (compliance.overall) {
-          toast.success('✅ Photo meets all requirements!');
+          toast.success('✅ 照片符合全部检查要求！');
         } else {
-          toast.error('⚠️ Photo has compliance issues');
+          toast.error('⚠️ 照片存在不符合要求的项目。');
         }
       }
     } catch (error) {
       console.error('Face detection error:', error);
-      toast.error('Face detection failed', { id: 'face-detection' });
+      toast.error('人脸检测失败，请稍后重试。', { id: 'face-detection' });
     } finally {
       setDetectingFace(false);
     }
@@ -144,17 +144,17 @@ const PassportPhotoTool = () => {
   // Handle auto-centering
   const handleAutoCenter = async () => {
     if (!faceDetection || !faceDetection.success) {
-      toast.error('Please detect face first');
+      toast.error('请先进行人脸检测。');
       return;
     }
 
     if (!preview) {
-      toast.error('No image to center');
+      toast.error('没有可居中的图片。');
       return;
     }
 
     setLoading(true);
-    toast.loading('Auto-centering face...', { id: 'auto-center' });
+    toast.loading('正在自动居中人脸...', { id: 'auto-center' });
 
     try {
       // Create canvas to manipulate image
@@ -224,7 +224,7 @@ const PassportPhotoTool = () => {
         const reader = new FileReader();
         reader.onloadend = () => {
           setPreview(reader.result);
-          toast.success('✅ Face auto-centered successfully!', { id: 'auto-center' });
+          toast.success('✅ 人脸已自动居中！', { id: 'auto-center' });
           
           // Re-detect face to update overlay
           setTimeout(() => {
@@ -236,7 +236,7 @@ const PassportPhotoTool = () => {
 
     } catch (error) {
       console.error('Auto-center error:', error);
-      toast.error('Auto-centering failed', { id: 'auto-center' });
+      toast.error('自动居中失败，请稍后重试。', { id: 'auto-center' });
     } finally {
       setLoading(false);
     }
@@ -245,7 +245,7 @@ const PassportPhotoTool = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!file) {
-      toast.error('Please select an image');
+      toast.error('请先选择图片。');
       return;
     }
 
@@ -288,16 +288,16 @@ const PassportPhotoTool = () => {
         
         // Show compliance toast
         if (complianceStatus && !complianceStatus.passed) {
-          toast.error('Photo may not meet all requirements. Please check compliance report.');
+          toast.error('照片可能不符合全部要求，请查看合规检查报告。');
         } else {
-          toast.success('Passport photos generated successfully!');
+          toast.success('证件照生成成功！');
         }
         await refreshUsage();
       } else {
         toast.error(await getProcessingErrorMessage(response));
       }
     } catch (error) {
-      toast.error('An error occurred');
+      toast.error('处理时发生错误，请稍后重试。');
       console.error(error);
     } finally {
       setLoading(false);
@@ -315,9 +315,9 @@ const PassportPhotoTool = () => {
 
   // Common passport sizes
   const passportSizes = [
-    { label: '2x2 inches (51x51 mm)', value: '2x2' },
-    { label: '1x1 inches (25x25 mm)', value: '1x1' },
-    { label: '1.5x1.5 inches (38x38 mm)', value: '1.5x1.5' },
+    { label: '2 × 2 英寸（51 × 51 mm）', value: '2x2' },
+    { label: '1 × 1 英寸（25 × 25 mm）', value: '1x1' },
+    { label: '1.5 × 1.5 英寸（38 × 38 mm）', value: '1.5x1.5' },
     { label: '35x45 mm', value: '35x45' },
     { label: '35x35 mm', value: '35x35' },
     { label: '45x45 mm', value: '45x45' },
@@ -333,11 +333,11 @@ const PassportPhotoTool = () => {
 
   // Paper sizes
   const paperSizes = [
-    { label: '4x6 inches', value: '4x6' },
-    { label: '5x7 inches', value: '5x7' },
-    { label: '8x10 inches', value: '8x10' },
-    { label: 'A4 (210x297 mm)', value: 'A4' },
-    { label: 'A5 (148x210 mm)', value: 'A5' }
+    { label: '4 × 6 英寸', value: '4x6' },
+    { label: '5 × 7 英寸', value: '5x7' },
+    { label: '8 × 10 英寸', value: '8x10' },
+    { label: 'A4（210 × 297 mm）', value: 'A4' },
+    { label: 'A5（148 × 210 mm）', value: 'A5' }
   ];
 
   return (
@@ -352,12 +352,12 @@ const PassportPhotoTool = () => {
             <svg className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back to Dashboard
+            返回工具列表
           </button>
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">Advanced Passport Photo Maker</h1>
-          <p className="text-gray-600 dark:text-gray-400 text-lg">Create professional passport photos with face detection and enhancement</p>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">高级证件照制作</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-lg">支持人脸检测、自动居中和画质增强的证件照工具</p>
           <span className="inline-block mt-3 px-4 py-1.5 bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded-full text-sm font-medium">
-            Image Editing
+            图片编辑
           </span>
         </div>
 
@@ -369,7 +369,7 @@ const PassportPhotoTool = () => {
               <svg className="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
-              Upload Photo & Customize Settings
+              上传照片与自定义设置
             </h2>
             
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -384,11 +384,11 @@ const PassportPhotoTool = () => {
               {/* File Info */}
               {fileInfo && (
                 <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
-                  <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-2">File Information</h3>
+                  <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-2">文件信息</h3>
                   <div className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-                    <p><span className="font-medium">Name:</span> {fileInfo.name}</p>
-                    <p><span className="font-medium">Size:</span> {fileInfo.size} KB</p>
-                    <p><span className="font-medium">Type:</span> {fileInfo.type}</p>
+                    <p><span className="font-medium">文件名：</span> {fileInfo.name}</p>
+                    <p><span className="font-medium">大小：</span> {fileInfo.size} KB</p>
+                    <p><span className="font-medium">类型：</span> {fileInfo.type}</p>
                   </div>
                 </div>
               )}
@@ -408,14 +408,14 @@ const PassportPhotoTool = () => {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Detecting Face...
+                        正在检测人脸...
                       </>
                     ) : (
                       <>
                         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        🤖 Detect Face with AI
+                        🤖 AI 人脸检测
                       </>
                     )}
                   </button>
@@ -434,14 +434,14 @@ const PassportPhotoTool = () => {
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
-                          Auto-Centering...
+                          正在自动居中...
                         </>
                       ) : (
                         <>
                           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                           </svg>
-                          🎯 Auto-Center Face
+                          🎯 自动居中人脸
                         </>
                       )}
                     </button>
@@ -456,12 +456,12 @@ const PassportPhotoTool = () => {
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Face Detected Successfully!
+                    已成功检测到人脸！
                   </h3>
                   <div className="text-sm text-green-700 dark:text-green-300 space-y-1">
-                    <p><span className="font-medium">Confidence:</span> {(faceDetection.confidence * 100).toFixed(1)}%</p>
-                    <p><span className="font-medium">Face Size:</span> {faceDetection.box.width}×{faceDetection.box.height}px</p>
-                    <p><span className="font-medium">Eye Level:</span> {faceDetection.eyeLevel.toFixed(0)}px</p>
+                    <p><span className="font-medium">置信度：</span> {(faceDetection.confidence * 100).toFixed(1)}%</p>
+                    <p><span className="font-medium">人脸大小：</span> {faceDetection.box.width}×{faceDetection.box.height}px</p>
+                    <p><span className="font-medium">眼睛高度：</span> {faceDetection.eyeLevel.toFixed(0)}px</p>
                   </div>
                 </div>
               )}
@@ -470,7 +470,7 @@ const PassportPhotoTool = () => {
               {complianceResults && (
                 <div className={`p-4 rounded-lg border ${complianceResults.overall ? 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800' : 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800'}`}>
                   <h3 className={`font-medium mb-2 flex items-center ${complianceResults.overall ? 'text-green-800 dark:text-green-200' : 'text-yellow-800 dark:text-yellow-200'}`}>
-                    {complianceResults.overall ? '✅ Compliance Check: PASSED' : '⚠️ Compliance Check: ISSUES FOUND'}
+                    {complianceResults.overall ? '✅ 合规检查：通过' : '⚠️ 合规检查：发现问题'}
                   </h3>
                   <div className={`text-sm space-y-2 ${complianceResults.overall ? 'text-green-700 dark:text-green-300' : 'text-yellow-700 dark:text-yellow-300'}`}>
                     {Object.entries(complianceResults.checks).map(([key, check]) => (
@@ -478,7 +478,7 @@ const PassportPhotoTool = () => {
                         <span className="mr-2">{check.passed ? '✅' : '❌'}</span>
                         <div>
                           <p className="font-medium capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
-                          <p className="text-xs">{check.message} (Value: {check.value}, Expected: {check.expected})</p>
+                          <p className="text-xs">{check.message}（当前值：{check.value}，要求：{check.expected}）</p>
                         </div>
                       </div>
                     ))}
@@ -489,7 +489,7 @@ const PassportPhotoTool = () => {
               {/* Country Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Country/Region
+                  国家 / 地区
                 </label>
                 <select
                   value={formData.country}
@@ -500,7 +500,7 @@ const PassportPhotoTool = () => {
                     <option key={country.value} value={country.value}>{country.label}</option>
                   ))}
                 </select>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Select your country for specific passport requirements</p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">选择国家或地区以查看对应的证件照要求</p>
               </div>
 
               {/* Country Requirements Info */}
@@ -514,25 +514,25 @@ const PassportPhotoTool = () => {
                     </div>
                     <div className="flex-1">
                       <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">
-                        📋 {passportCountries[formData.country].name} Requirements
+                        📋 {passportCountries[formData.country].name} 证件照要求
                       </h3>
                       <div className="space-y-2 text-xs text-blue-800 dark:text-blue-300">
                         <div className="flex items-center space-x-2">
-                          <span className="font-medium">📏 Size:</span>
-                          <span>{passportCountries[formData.country].size.width} × {passportCountries[formData.country].size.height} {passportCountries[formData.country].size.unit}</span>
+                          <span className="font-medium">📏 尺寸：</span>
+                          <span>{passportCountries[formData.country].size.width} × {passportCountries[formData.country].size.height} {passportCountries[formData.country].size.unit === 'inches' ? '英寸' : passportCountries[formData.country].size.unit}</span>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <span className="font-medium">🎨 Background:</span>
+                          <span className="font-medium">🎨 背景：</span>
                           <span className="inline-block w-4 h-4 rounded border border-gray-300" style={{backgroundColor: passportCountries[formData.country].background}}></span>
-                          <span>{passportCountries[formData.country].background === '#FFFFFF' ? 'White' : passportCountries[formData.country].background === '#F0F0F0' ? 'Light Grey' : 'Custom'}</span>
+                          <span>{passportCountries[formData.country].background === '#FFFFFF' ? '白色' : passportCountries[formData.country].background === '#F0F0F0' ? '浅灰色' : '自定义'}</span>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <span className="font-medium">🎯 DPI:</span>
+                          <span className="font-medium">🎯 DPI：</span>
                           <span>{passportCountries[formData.country].dpi}</span>
                         </div>
                       </div>
                       <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
-                        <p className="text-xs font-medium text-blue-900 dark:text-blue-200 mb-2">✅ Compliance Rules:</p>
+                        <p className="text-xs font-medium text-blue-900 dark:text-blue-200 mb-2">✅ 合规要求：</p>
                         <ul className="space-y-1 text-xs text-blue-700 dark:text-blue-300">
                           {passportCountries[formData.country].requirements.map((rule, index) => (
                             <li key={index} className="flex items-start">
@@ -550,7 +550,7 @@ const PassportPhotoTool = () => {
               {/* Passport Size */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Passport Size
+                  证件照尺寸
                 </label>
                 <select
                   value={formData.size}
@@ -566,24 +566,24 @@ const PassportPhotoTool = () => {
               {/* DPI */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  DPI (Dots Per Inch)
+                  DPI（每英寸点数）
                 </label>
                 <select
                   value={formData.dpi}
                   onChange={(e) => setFormData({...formData, dpi: e.target.value})}
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
-                  <option value="72">72 DPI (Screen)</option>
-                  <option value="150">150 DPI (Standard)</option>
-                  <option value="300">300 DPI (High Quality)</option>
-                  <option value="600">600 DPI (Professional)</option>
+                  <option value="72">72 DPI（屏幕显示）</option>
+                  <option value="150">150 DPI（标准）</option>
+                  <option value="300">300 DPI（高质量）</option>
+                  <option value="600">600 DPI（专业打印）</option>
                 </select>
               </div>
 
               {/* Background Color */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Background Color
+                  背景颜色
                 </label>
                 <div className="flex items-center space-x-3">
                   <input
@@ -597,12 +597,12 @@ const PassportPhotoTool = () => {
                     onChange={(e) => setFormData({...formData, background: e.target.value})}
                     className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   >
-                    <option value="#FFFFFF">White</option>
-                    <option value="#000000">Black</option>
-                    <option value="#0000FF">Blue</option>
-                    <option value="#FF0000">Red</option>
-                    <option value="#00FF00">Green</option>
-                    <option value="#FFFF00">Yellow</option>
+                    <option value="#FFFFFF">白色</option>
+                    <option value="#000000">黑色</option>
+                    <option value="#0000FF">蓝色</option>
+                    <option value="#FF0000">红色</option>
+                    <option value="#00FF00">绿色</option>
+                    <option value="#FFFF00">黄色</option>
                   </select>
                 </div>
               </div>
@@ -610,7 +610,7 @@ const PassportPhotoTool = () => {
               {/* Quantity */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Number of Photos
+                  照片数量
                 </label>
                 <select
                   value={formData.quantity}
@@ -618,7 +618,7 @@ const PassportPhotoTool = () => {
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
                   {[1, 2, 4, 6, 8, 9, 10, 12, 16].map((num) => (
-                    <option key={num} value={num}>{num} photos</option>
+                    <option key={num} value={num}>{num} 张</option>
                   ))}
                 </select>
               </div>
@@ -626,7 +626,7 @@ const PassportPhotoTool = () => {
               {/* Paper Size */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Paper Size
+                  相纸尺寸
                 </label>
                 <select
                   value={formData.paperSize}
@@ -649,7 +649,7 @@ const PassportPhotoTool = () => {
                   className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                 />
                 <label htmlFor="enhance" className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                  Enhance photo quality (sharpen, adjust brightness)
+                  增强照片质量（锐化、调整亮度）
                 </label>
               </div>
               
@@ -663,14 +663,14 @@ const PassportPhotoTool = () => {
                   className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                 />
                 <label htmlFor="complianceCheck" className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                  Enable compliance checking
+                  启用合规检查
                 </label>
               </div>
               
               {/* Advanced Compliance Checks */}
               {formData.complianceCheck && (
                 <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-lg space-y-3">
-                  <h3 className="font-medium text-indigo-800 dark:text-indigo-200">Advanced Compliance Checks</h3>
+                  <h3 className="font-medium text-indigo-800 dark:text-indigo-200">高级合规检查</h3>
                   
                   <div className="flex items-center">
                     <input
@@ -681,7 +681,7 @@ const PassportPhotoTool = () => {
                       className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                     />
                     <label htmlFor="headPositionCheck" className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                      Head position analysis
+                      头部位置分析
                     </label>
                   </div>
                   
@@ -694,7 +694,7 @@ const PassportPhotoTool = () => {
                       className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                     />
                     <label htmlFor="lightingCheck" className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                      Lighting quality check
+                      光线质量检查
                     </label>
                   </div>
                   
@@ -707,7 +707,7 @@ const PassportPhotoTool = () => {
                       className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                     />
                     <label htmlFor="backgroundCheck" className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                      Background color validation
+                      背景颜色校验
                     </label>
                   </div>
                 </div>
@@ -725,9 +725,9 @@ const PassportPhotoTool = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Generating...
+                    正在生成...
                   </span>
-                ) : 'Generate Passport Photos'}
+                ) : '生成证件照'}
               </button>
             </form>
           </div>
@@ -738,25 +738,25 @@ const PassportPhotoTool = () => {
               <svg className="w-6 h-6 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Result
+              处理结果
             </h2>
             
             {result ? (
               <div className="space-y-6">
-                <img src={result.url} alt="Result" className="w-full h-80 object-contain rounded-lg bg-gray-100 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600" />
+                <img src={result.url} alt="证件照结果" className="w-full h-80 object-contain rounded-lg bg-gray-100 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600" />
                 
                 {/* Compliance Report */}
                 {result.compliance && (
                   <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
-                    <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Compliance Report</h3>
+                    <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-2">合规检查报告</h3>
                     <div className="text-sm text-blue-700 dark:text-blue-300">
                       <p className="flex items-center mb-2">
                         <span className={`inline-block w-3 h-3 rounded-full mr-2 ${result.compliance.passed ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                        Status: {result.compliance.passed ? 'Passed' : 'Issues Detected'}
+                        状态：{result.compliance.passed ? '已通过' : '发现问题'}
                       </p>
                       {result.compliance.issues && result.compliance.issues.length > 0 && (
                         <div className="mt-2">
-                          <p className="font-medium">Issues:</p>
+                          <p className="font-medium">问题：</p>
                           <ul className="list-disc pl-5 mt-1 space-y-1">
                             {result.compliance.issues.map((issue, index) => (
                               <li key={index}>{issue}</li>
@@ -766,7 +766,7 @@ const PassportPhotoTool = () => {
                       )}
                       {result.compliance.suggestions && result.compliance.suggestions.length > 0 && (
                         <div className="mt-2">
-                          <p className="font-medium">Suggestions:</p>
+                          <p className="font-medium">建议：</p>
                           <ul className="list-disc pl-5 mt-1 space-y-1">
                             {result.compliance.suggestions.map((suggestion, index) => (
                               <li key={index}>{suggestion}</li>
@@ -776,7 +776,7 @@ const PassportPhotoTool = () => {
                       )}
                       {result.compliance.details && (
                         <div className="mt-2">
-                          <p className="font-medium">Details:</p>
+                          <p className="font-medium">详情：</p>
                           <ul className="list-disc pl-5 mt-1 space-y-1">
                             {Object.entries(result.compliance.details).map(([key, value]) => (
                               <li key={key}>{key.charAt(0).toUpperCase() + key.slice(1)}: {value.toString()}</li>
@@ -796,19 +796,19 @@ const PassportPhotoTool = () => {
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    Download Photos
+                    下载证件照
                   </button>
                   <button
                     onClick={() => {
                       // Simulate print order functionality
-                      toast.success('Print order functionality would be implemented here');
+                      toast.success('照片冲印服务暂未开放。');
                     }}
                     className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-4 px-6 rounded-lg transition-all transform hover:scale-105 active:scale-95 shadow-lg flex items-center justify-center"
                   >
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                     </svg>
-                    Order Prints
+                    冲印照片（暂未开放）
                   </button>
                 </div>
               </div>
@@ -820,7 +820,7 @@ const PassportPhotoTool = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <p className="text-gray-600 dark:text-gray-300 font-medium">Generating your passport photos...</p>
+                    <p className="text-gray-600 dark:text-gray-300 font-medium">正在生成证件照...</p>
                   </>
                 ) : (
                   <>
@@ -830,7 +830,7 @@ const PassportPhotoTool = () => {
                       <polyline points="21 15 16 10 5 21" stroke="currentColor" strokeWidth="1.5" fill="none"/>
                     </svg>
                     <p className="text-gray-500 dark:text-gray-400 text-center text-base px-8">
-                      Upload and process a photo to generate passport photos
+                      上传照片并开始处理，生成的证件照会显示在这里
                     </p>
                   </>
                 )}

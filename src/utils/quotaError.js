@@ -7,5 +7,14 @@ export const getProcessingErrorMessage = async (response, fallbackMessage = '图
     return QUOTA_EXCEEDED_MESSAGE;
   }
 
-  return errorData?.message || errorData?.error || fallbackMessage;
+  if (response.status === 401) {
+    return '请先登录后再使用图片工具。';
+  }
+
+  if (response.status === 413) {
+    return '上传的文件过大，请选择较小的文件。';
+  }
+
+  const serverMessage = errorData?.message || errorData?.error;
+  return /[\u3400-\u9fff]/.test(serverMessage || '') ? serverMessage : fallbackMessage;
 };

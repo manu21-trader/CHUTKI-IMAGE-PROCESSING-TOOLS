@@ -22,9 +22,9 @@ const Login = () => {
     const error = urlParams.get('error');
 
     if (error === 'oauth_failed') {
-      setError('Google Sign-In failed. Please try again.');
+      setError('Google 登录失败，请重试。');
     } else if (error === 'oauth_error') {
-      setError('An error occurred during Google Sign-In.');
+      setError('Google 登录时发生错误，请重试。');
     }
   }, [location]);
 
@@ -60,11 +60,11 @@ const Login = () => {
         // Force a page reload to ensure AuthContext picks up the new auth state
         window.location.href = '/';
       } else {
-        setError(data.message || 'Login failed');
+        setError(response.status === 401 ? '邮箱或密码错误。' : '登录失败，请稍后重试。');
       }
     } catch (error) {
       console.error('Login error:', error);
-      setError('Network error. Please try again.');
+      setError('网络连接异常，请稍后重试。');
     } finally {
       setLoading(false);
     }
@@ -93,7 +93,7 @@ const Login = () => {
       window.location.href = `${config.API_BASE_URL}/api/auth/google`;
     } catch (error) {
       console.error('Google OAuth error:', error);
-      setError('Google Sign-In is currently unavailable. Please use email/password login.');
+      setError('Google 登录暂时不可用，请使用邮箱和密码登录。');
       setLoading(false);
     }
   };
@@ -128,7 +128,7 @@ const Login = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
           >
-            Sign in to CHUTKI
+            登录 CHUTKI
           </motion.h2>
           <motion.p 
             className="text-gray-600"
@@ -136,9 +136,9 @@ const Login = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
           >
-            Or{' '}
+            还没有账号？{' '}
             <Link to="/register" className="text-purple-600 hover:text-purple-500 font-medium">
-              create a new account
+              立即注册
             </Link>
           </motion.p>
         </motion.div>
@@ -164,7 +164,7 @@ const Login = () => {
           <div className="space-y-4">
             <div>
               <label htmlFor="email" className="sr-only">
-                Email address
+                邮箱地址
               </label>
               <input
                 id="email"
@@ -175,12 +175,12 @@ const Login = () => {
                 value={formData.email}
                 onChange={handleChange}
                 className="relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="Email address"
+                placeholder="邮箱地址"
               />
             </div>
             <div className="relative">
               <label htmlFor="password" className="sr-only">
-                Password
+                密码
               </label>
               <input
                 id="password"
@@ -191,12 +191,13 @@ const Login = () => {
                 value={formData.password}
                 onChange={handleChange}
                 className="relative block w-full px-4 py-3 pr-12 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="Password"
+                placeholder="密码"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none"
+                aria-label={showPassword ? "隐藏密码" : "显示密码"}
               >
                 {showPassword ? (
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -215,7 +216,7 @@ const Login = () => {
           <div className="flex items-center justify-between">
             <div className="text-sm">
               <Link to="/forgot-password" className="text-purple-600 hover:text-purple-500">
-                Forgot your password?
+                忘记密码？
               </Link>
             </div>
           </div>
@@ -231,14 +232,14 @@ const Login = () => {
               {loading ? (
                 <div className="flex items-center">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Signing in...
+                  正在登录...
                 </div>
               ) : (
                 <>
                   <svg className="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  Sign in
+                  登录
                 </>
               )}
             </motion.button>
@@ -251,7 +252,7 @@ const Login = () => {
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-2 bg-gradient-to-br from-purple-50 to-pink-50 text-gray-500">
-                Or continue with
+                或使用以下方式登录
               </span>
             </div>
           </div>
@@ -268,7 +269,7 @@ const Login = () => {
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-700 mr-3"></div>
-                  Connecting to Google...
+                  正在连接 Google...
                 </>
               ) : (
                 <>
@@ -278,7 +279,7 @@ const Login = () => {
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                   </svg>
-                  Sign in with Google
+                  使用 Google 登录
                 </>
               )}
             </motion.button>
