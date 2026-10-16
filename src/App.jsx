@@ -29,7 +29,6 @@ import ResizePixelTool from "./components/tools/ResizePixelTool";
 import CompressImageTool from "./components/tools/CompressImageTool";
 import RotateImageTool from "./components/tools/RotateImageTool";
 import FlipImageTool from "./components/tools/FlipImageTool";
-import HeicToJpgTool from "./components/tools/HeicToJpgTool";
 import Profile from "./components/Profile";
 
 // Main App Content Component
@@ -67,8 +66,7 @@ function AppContent() {
       "Increase Image Size In KB": "/tools/increase-size-kb",
       "Remove Image Background": "/tools/remove-background",
       "Convert DPI (200,300,600)": "/tools/convert-dpi",
-      "PDF To Images": "/tools/pdf-to-jpg",
-      "Convert Image": "/tools/heic-to-jpg",
+      "Convert Image": "/tools/webp-to-jpg",
       "Compress Image": "/tools/compress-50kb",
       "Compress PDF": "/tools/compress-50kb", // Using image compression for now
       "Crop Image": "/tools/circle-crop"
@@ -245,7 +243,6 @@ function AppContent() {
             { key: "Increase Image Size In KB", label: "增大图片文件体积" },
             { key: "Remove Image Background", label: "移除图片背景" },
             { key: "Convert DPI (200,300,600)", label: "转换图片 DPI（200/300/600）" },
-            { key: "PDF To Images", label: "PDF 转图片" },
             { key: "Convert Image", label: "图片格式转换" },
             { key: "Compress Image", label: "压缩图片" },
             { key: "Compress PDF", label: "压缩 PDF" },
@@ -292,7 +289,6 @@ function AppContent() {
         <Route path="/tools/compress-50kb" element={<CompressImageTool />} />
         <Route path="/tools/rotate" element={<RotateImageTool />} />
         <Route path="/tools/flip" element={<FlipImageTool />} />
-        <Route path="/tools/heic-to-jpg" element={<HeicToJpgTool />} />
 
         {/* Image Tools Hub */}
         <Route path="/image-tools" element={<ImageTools />} />

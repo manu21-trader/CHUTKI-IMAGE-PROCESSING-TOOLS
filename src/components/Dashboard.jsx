@@ -59,7 +59,7 @@ const FEATURED_TOOLS = [
     id: 'convert',
     name: 'Convert Format',
     description: 'Convert between image formats',
-    route: '/tools/heic-to-jpg',
+    route: '/tools/webp-to-jpg',
     icon: 'convert',
     color: 'indigo',
     category: 'Image Conversion Tools'

@@ -4,14 +4,12 @@ import toast from 'react-hot-toast';
 import config from '../../config';
 import FileUploadZone from '../shared/FileUploadZone';
 import { useAuth } from '../../context/AuthContext';
-import { useUsage } from '../../context/UsageContext';
 import { getProcessingErrorMessage } from '../../utils/quotaError';
 
 const ResizePixelTool = () => {
   const navigate = useNavigate();
   const navigationType = useNavigationType();
   const { token } = useAuth();
-  const { refreshUsage } = useUsage();
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -109,7 +107,6 @@ const ResizePixelTool = () => {
         } else {
           toast.success('图片尺寸调整成功！');
         }
-        await refreshUsage();
       } else {
         toast.error(await getProcessingErrorMessage(response, '图片尺寸调整失败，请稍后重试。'));
       }
@@ -199,6 +196,7 @@ const ResizePixelTool = () => {
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="输入宽度"
                     min="1"
+                    max="6000"
                   />
                 </div>
                 <div>
@@ -212,6 +210,7 @@ const ResizePixelTool = () => {
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="输入高度"
                     min="1"
+                    max="6000"
                   />
                 </div>
               </div>

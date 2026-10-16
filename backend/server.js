@@ -52,8 +52,23 @@ import { validateEnvironment, getEnvironmentInfo } from "./utils/envValidation.j
 import authRoutes from "./routes/auth.js";
 import profileRoutes from "./routes/profile.js";
 import usageRoutes from "./routes/usage.js";
-import { protect } from "./middleware/auth.js";
-import { enforceMonthlyQuota } from "./middleware/quota.js";
+import {
+  classifyToolRequest,
+  limitToolRequests,
+  protectMeteredTool,
+  quotaMeteredTool
+} from "./middleware/toolAccess.js";
+import {
+  acquireImageProcessingSlot,
+  validateImageRequest
+} from "./middleware/imageSafety.js";
+import { IMAGE_LIMITS } from "./config/imageLimits.js";
+import {
+  ALL_IMAGE_TOOLS,
+  PUBLIC_LOW_COST,
+  METERED_HIGH_COST,
+  HIDDEN_UNSTABLE
+} from "../shared/toolAccessPolicy.js";
 // Modular tool category routers (split from unified-tools.js)
 import compressorsRoutes from "./api/tools/compressors.js";
 import convertersRoutes from "./api/tools/converters.js";
@@ -139,7 +154,7 @@ app.use((req, res, next) => {
 // Rate limiting
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10000, // limit each IP to 10000 requests per windowMs (increased for performance testing)
+  max: Number.parseInt(process.env.GENERAL_RATE_LIMIT || '300', 10),
   message: {
     error: 'Too many requests from this IP, please try again later.',
     retryAfter: '15 minutes'
@@ -148,19 +163,7 @@ const generalLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-const uploadLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5000, // limit each IP to 5000 uploads per windowMs (increased for performance testing)
-  message: {
-    error: 'Too many file uploads from this IP, please try again later.',
-    retryAfter: '15 minutes'
-  },
-});
-
 app.use('/api/', generalLimiter);
-app.use('/api/upload', uploadLimiter);
-app.use('/api/passport-photo', uploadLimiter);
-app.use('/api/tools/', uploadLimiter);
 
 // ================== Basic Middleware ==================
 app.use(express.json({ limit: '10mb' }));
@@ -245,8 +248,9 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
-    files: 20 // Maximum 20 files
+    fileSize: IMAGE_LIMITS.maxFileBytes,
+    files: IMAGE_LIMITS.maxFiles,
+    parts: IMAGE_LIMITS.maxFiles + 30
   },
   fileFilter
 });
@@ -314,30 +318,33 @@ app.use('/api/profile', profileRoutes);
 // Current user's monthly image processing usage
 app.use('/api/usage', usageRoutes);
 
-// ChatGPT API routes
-app.use('/api/chatgpt', chatgptRoutes);
+const requireAiChatEnabled = (req, res, next) => {
+  if (process.env.DISABLE_AI_CHAT !== 'false') {
+    return res.status(503).json({
+      error: 'AI_CHAT_DISABLED',
+      message: 'AI chat is disabled'
+    });
+  }
+  next();
+};
 
-// AI Chat routes
-app.use('/api/ai', aiChatRoutes);
+// AI Chat code remains available but is disabled unless explicitly enabled.
+app.use('/api/chatgpt', requireAiChatEnabled, chatgptRoutes);
+app.use('/api/ai', requireAiChatEnabled, aiChatRoutes);
 
 // ── Modular tool category routers (ORDER MATTERS: specific before generic) ──
-// Every POST below this shared mount is an image-processing request. Authenticate
-// and reserve quota before parsing uploads so no category router or alias can
-// bypass usage enforcement. Public GET health/list routes pass through unchanged.
-const protectToolProcessing = (req, res, next) => {
-  if (req.method !== 'POST') return next();
-  return protect(req, res, next);
-};
-const enforceToolProcessingQuota = (req, res, next) => {
-  if (req.method !== 'POST') return next();
-  return enforceMonthlyQuota(req, res, next);
-};
-
-app.use('/api/tools', protectToolProcessing);
-app.use('/api/tools', enforceToolProcessingQuota);
+// Every POST below this shared mount is classified once. Metered tools authenticate
+// and reserve quota; public tools skip User/Usage but retain all resource guards.
+// Public GET health/list routes pass through unchanged.
+app.use('/api/tools', classifyToolRequest);
+app.use('/api/tools', limitToolRequests);
+app.use('/api/tools', protectMeteredTool);
+app.use('/api/tools', quotaMeteredTool);
+app.use('/api/tools', acquireImageProcessingSlot);
 
 // Parse multipart forms ONCE for all tool routes to prevent stream-draining hangs.
 app.use('/api/tools', upload.any());
+app.use('/api/tools', validateImageRequest);
 
 // IMPORTANT: passport-photo-advanced MUST come BEFORE editorsRoutes
 // because editorsRoutes uses a wildcard /:tool that would capture it first
@@ -361,7 +368,12 @@ app.get('/api/tools/health', (req, res) => {
     status: 'OK',
     service: 'image-tools',
     timestamp: new Date().toISOString(),
-    totalTools: 81,
+    totalTools: ALL_IMAGE_TOOLS.length,
+    accessPolicy: {
+      publicLowCost: PUBLIC_LOW_COST.length,
+      meteredHighCost: METERED_HIGH_COST.length,
+      hiddenUnstable: HIDDEN_UNSTABLE.length
+    },
     categories: {
       compression: 23,
       conversion: 13,
@@ -377,32 +389,13 @@ app.get('/api/tools/health', (req, res) => {
 app.get('/api/tools/list', (req, res) => {
   res.json({
     status: 'OK',
-    count: 81,
-    tools: [
-      // Compression
-      'image-compressor','reduce-size-kb','reduce-size-mb','increase-size-kb',
-      'compress-5kb','compress-10kb','compress-15kb','compress-20kb','compress-20-50kb',
-      'compress-25kb','compress-30kb','compress-40kb','compress-50kb','compress-100kb',
-      'compress-150kb','compress-200kb','compress-300kb','compress-500kb',
-      'compress-1mb','compress-2mb','jpg-to-kb','mb-to-kb','kb-to-mb',
-      // Conversion
-      'heic-to-jpg','webp-to-jpg','jpeg-to-png','png-to-jpeg','jpg-to-text','png-to-text',
-      'jpg-to-pdf-50kb','jpg-to-pdf-100kb','jpeg-to-pdf-200kb','jpg-to-pdf-300kb',
-      'jpg-to-pdf-500kb','image-to-pdf','pdf-to-jpg',
-      // Resize
-      'resize-pixel','resize-cm','resize-mm','resize-inches','resize-6x2-300dpi',
-      'resize-3-5x4-5cm','resize-35x45mm','resize-2x2','resize-4x6','resize-3x4',
-      'resize-600x600','resize-a4','resize-ssc','resize-pan','resize-upsc',
-      'resize-whatsapp-dp','resize-instagram','instagram-grid','resize-youtube-banner',
-      'super-resolution','resize-signature','resize-sign-50x20mm','bulk-resize','join-images',
-      // Editing
-      'rotate','flip','watermark','black-white','grayscale','circle-crop','pixelate',
-      'pixelate-face','blur-face','censor','freehand-crop','remove-background',
-      'color-picker','split-image','add-name-dob','convert-dpi','check-dpi',
-      'pixel-art','generate-signature','ai-face-generator',
-      // Special
-      'passport-photo-advanced'
-    ]
+    count: ALL_IMAGE_TOOLS.length,
+    tools: ALL_IMAGE_TOOLS,
+    accessPolicy: {
+      publicLowCost: PUBLIC_LOW_COST,
+      meteredHighCost: METERED_HIGH_COST,
+      hiddenUnstable: HIDDEN_UNSTABLE
+    }
   });
 });
 
@@ -521,41 +514,43 @@ app.use((err, req, res, next) => {
   console.error(`[ALERT] Error [${req.requestId}]:`, err.stack);
 
   // Multer errors
-  if (err instanceof multer.MulterError) {
+  if (err instanceof multer.MulterError || err?.name === 'MulterError' || String(err?.code).startsWith('LIMIT_')) {
     if (err.code === "LIMIT_FILE_SIZE") {
-      return res.status(400).json(errorResponse(res, "File too large. Maximum size is 10MB."));
+      return errorResponse(res, "File too large. Maximum size is 8 MiB.", 413);
     }
     if (err.code === "LIMIT_FILE_COUNT") {
-      return res.status(400).json(errorResponse(res, "Too many files. Maximum 20 files allowed."));
+      return errorResponse(res, "Too many files. Maximum 4 files allowed.", 413);
     }
-    return res.status(400).json(errorResponse(res, `Upload error: ${err.message}`));
+    return errorResponse(res, `Upload error: ${err.message}`, 400);
   }
 
   // CORS errors
   if (err.message === 'Not allowed by CORS') {
-    return res.status(403).json(errorResponse(res, "CORS policy violation"));
+    return errorResponse(res, "CORS policy violation", 403);
   }
 
   // Validation errors
   if (err.name === 'ValidationError') {
-    return res.status(400).json(errorResponse(res, "Validation failed", err.errors));
+    return errorResponse(res, "Validation failed", 400, err);
   }
 
   // JWT errors
   if (err.name === 'JsonWebTokenError') {
-    return res.status(401).json(errorResponse(res, "Invalid token"));
+    return errorResponse(res, "Invalid token", 401);
   }
 
   // MongoDB errors
   if (err.name === 'MongoError' || err.name === 'MongoServerError') {
-    return res.status(500).json(errorResponse(res, "Database error"));
+    return errorResponse(res, "Database error", 500);
   }
 
   // Default error response
-  res.status(500).json(errorResponse(res,
+  return errorResponse(
+    res,
     process.env.NODE_ENV === "production" ? "Internal server error" : err.message,
-    process.env.NODE_ENV === "production" ? undefined : err.stack
-  ));
+    500,
+    process.env.NODE_ENV === "production" ? null : err
+  );
 });
 
 // 404 handler

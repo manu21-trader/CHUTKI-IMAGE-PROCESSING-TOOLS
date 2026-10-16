@@ -20,7 +20,7 @@ const CATEGORY_HUB = [
   {
     title: "Image Editing Tools",
     desc: "Resize, rotate, watermark, crop & more",
-    count: 47,
+    count: toolsConfig["Image Editing Tools"].length,
     route: "/image-editing-tools",
     from: "from-violet-500",
     via: "via-purple-600",
@@ -31,7 +31,7 @@ const CATEGORY_HUB = [
   {
     title: "Image Conversion Tools",
     desc: "Convert between JPG, PNG, PDF, HEIC & more",
-    count: 13,
+    count: toolsConfig["Image Conversion Tools"].length,
     route: "/image-conversion-tools",
     from: "from-blue-500",
     via: "via-cyan-500",
@@ -42,7 +42,7 @@ const CATEGORY_HUB = [
   {
     title: "Image Compression Tools",
     desc: "Compress images to exact KB or MB targets",
-    count: 21,
+    count: toolsConfig["Image Compression Tools"].length,
     route: "/image-compression-tools",
     from: "from-emerald-500",
     via: "via-green-500",
@@ -61,7 +61,6 @@ const getToolLink = (toolName) => {
   }
   const toolNameLower = toolName.toLowerCase();
   if (toolNameLower.includes("passport photo maker")) return "/passport-photo";
-  if (toolNameLower.includes("heic to jpg")) return "/tools/heic-to-jpg";
   if (toolNameLower.includes("webp to jpg")) return "/tools/webp-to-jpg";
   if (toolNameLower.includes("jpeg to png")) return "/tools/jpeg-to-png";
   if (toolNameLower.includes("png to jpeg")) return "/tools/png-to-jpeg";

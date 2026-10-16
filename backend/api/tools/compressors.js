@@ -4,6 +4,7 @@
 import express from 'express';
 import multer from 'multer';
 import sharp from 'sharp';
+import { IMAGE_LIMITS, assertOutputDimensions } from '../../config/imageLimits.js';
 
 const router = express.Router();
 
@@ -132,19 +133,32 @@ router.post('/:tool', async (req, res, next) => {
       const targetBytes = targetKB * 1024;
       const metadata = await sharp(fileBuffer).metadata();
 
-      // Try progressively larger scales until output meets target
+      const safeScale = Math.min(
+        IMAGE_LIMITS.maxResizeScale,
+        IMAGE_LIMITS.maxOutputWidth / metadata.width,
+        IMAGE_LIMITS.maxOutputHeight / metadata.height,
+        Math.sqrt(IMAGE_LIMITS.maxOutputPixels / (metadata.width * metadata.height))
+      );
+      if (safeScale < 1) return res.status(422).json({ error: 'image_limit_exceeded', message: 'Input image is already at the safe output limit' });
+
+      // Try progressively larger scales until output meets target, without ever
+      // constructing a canvas beyond the shared 512MB safety budget.
       let processedResult = null;
-      for (let scale = 1.2; scale <= 5.0; scale += 0.2) {
+      for (let scale = 1.2; scale <= safeScale; scale += 0.2) {
         const newW = Math.round(metadata.width * scale);
         const newH = Math.round(metadata.height * scale);
+        assertOutputDimensions(newW, newH);
         const test = await sharp(fileBuffer)
           .resize(newW, newH, { kernel: 'lanczos3' })
           .jpeg({ quality: 95, chromaSubsampling: '4:4:4', mozjpeg: false })
           .toBuffer();
         if (test.length >= targetBytes) { processedResult = test; break; }
       }
+      const fallbackWidth = Math.max(1, Math.floor(metadata.width * safeScale));
+      const fallbackHeight = Math.max(1, Math.floor(metadata.height * safeScale));
+      assertOutputDimensions(fallbackWidth, fallbackHeight);
       processedBuffer = processedResult || await sharp(fileBuffer)
-        .resize(Math.round(metadata.width * 5), Math.round(metadata.height * 5), { kernel: 'lanczos3' })
+        .resize(fallbackWidth, fallbackHeight, { kernel: 'lanczos3' })
         .jpeg({ quality: 100, chromaSubsampling: '4:4:4', mozjpeg: false })
         .toBuffer();
       filename = customFilename ? `${customFilename}.jpg` : `increased_${targetKB}kb_${Date.now()}.jpg`;

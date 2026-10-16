@@ -4,6 +4,8 @@ import ChutkiAssistant from "./ChutkiAssistant";
 import Footer from "./Footer";
 import ScrollEffect from "./shared/ScrollEffect";
 
+const AI_CHAT_ENABLED = import.meta.env.VITE_ENABLE_AI_CHAT === 'true';
+
 function Home() {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -35,7 +37,7 @@ function Home() {
             CHUTKI 图片压缩与编辑工具
           </h2>
           <p className="max-w-2xl lg:max-w-4xl mx-auto text-sm sm:text-base lg:text-lg text-gray-600 dark:text-gray-300 mt-3 sm:mt-4 lg:mt-6 leading-relaxed px-2">
-            提供 100 多种在线图片工具，支持图片压缩、尺寸调整、格式转换、HEIC 转 JPG、
+            提供丰富的在线图片工具，支持图片压缩、尺寸调整、常用格式转换、
             背景移除等常用操作。
           </p>
         </section>
@@ -51,9 +53,11 @@ function Home() {
         <ImageTools searchQuery={searchQuery} />
       </ScrollEffect>
       
-      <ScrollEffect animation="fade-up" duration={800} delay={400}>
-        <ChutkiAssistant />
-      </ScrollEffect>
+      {AI_CHAT_ENABLED && (
+        <ScrollEffect animation="fade-up" duration={800} delay={400}>
+          <ChutkiAssistant />
+        </ScrollEffect>
+      )}
       
       <ScrollEffect animation="fade-up" duration={800} delay={600}>
         <Footer />

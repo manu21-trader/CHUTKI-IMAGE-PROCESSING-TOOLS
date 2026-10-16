@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { useUsage } from '../../context/UsageContext';
 import { getProcessingErrorMessage } from '../../utils/quotaError';
+import { TOOL_ACCESS, getToolAccess } from '../../../shared/toolAccessPolicy.js';
 
 const ToolLayout = ({
   title,
@@ -12,7 +13,7 @@ const ToolLayout = ({
   children,
   onSubmit,
   acceptedFormats = "image/*",
-  maxFileSize = 10,
+  maxFileSize = 8,
   showPreview = true
 }) => {
   const { token } = useAuth();
@@ -94,7 +95,10 @@ const ToolLayout = ({
           setResult({ type: 'image', url, blob });
           toast.success('处理完成，请点击下载保存。');
         }
-        await refreshUsage();
+        const toolSlug = endpoint.split('/').filter(Boolean).pop();
+        if (getToolAccess(toolSlug) === TOOL_ACCESS.METERED_HIGH_COST) {
+          await refreshUsage();
+        }
       } else {
         toast.error(await getProcessingErrorMessage(response));
       }

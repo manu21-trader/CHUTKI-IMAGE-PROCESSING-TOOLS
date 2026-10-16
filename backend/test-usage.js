@@ -8,6 +8,11 @@ import sharp from 'sharp';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { MONTHLY_QUOTA_LIMITS, PLAN_PRICING } from './config/quota.js';
 import { getPeriodKey } from './services/quotaService.js';
+import {
+  PUBLIC_LOW_COST,
+  METERED_HIGH_COST,
+  HIDDEN_UNSTABLE
+} from '../shared/toolAccessPolicy.js';
 
 const getAvailablePort = () => new Promise((resolve, reject) => {
   const socket = net.createServer();
@@ -115,7 +120,9 @@ try {
       SESSION_SECRET: 'test-only-session-secret-that-is-long-enough',
       RESEND_API_KEY: 're_test_only_not-a-real-key',
       NODE_ENV: 'test',
-      CLIENT_URL: 'http://localhost:5173'
+      CLIENT_URL: 'http://localhost:5173',
+      PUBLIC_TOOL_RATE_LIMIT: '500',
+      METERED_TOOL_RATE_LIMIT: '500'
     },
     stdio: ['ignore', 'pipe', 'pipe']
   });
@@ -125,30 +132,31 @@ try {
   await waitForDatabase(baseUrl, () => output);
   databaseConnection = await mongoose.createConnection(mongoUri).asPromise();
 
-  // The real server route is the source of the public processing-tool inventory.
+  // The real server route exposes the shared 81-tool processing inventory.
   const toolList = await requestJson(`${baseUrl}/api/tools/list`);
   assert.equal(toolList.response.status, 200);
   assert.equal(toolList.body.count, 81);
   assert.equal(toolList.body.tools.length, 81);
 
-  // Every advertised image tool, plus backend compatibility aliases, must reject
-  // unauthenticated requests before any image processing begins.
-  const aliases = [
-    'passport-photo',
-    'rotate-tool',
-    'flip-tool',
-    'add-text',
-    'compress-image',
-    'ocr',
-    'resize-35x45cm',
-    'resize-signature-50x20mm',
-    // compressors.js currently accepts any compress-* compatibility name.
-    'compress-arbitrary'
-  ];
-  const unauthenticatedResults = await Promise.all(
-    [...toolList.body.tools, ...aliases].map(tool => fetch(`${baseUrl}/api/tools/${tool}`, { method: 'POST' }))
+  assert.equal(toolList.body.accessPolicy.publicLowCost.length, 39);
+  assert.equal(toolList.body.accessPolicy.meteredHighCost.length, 37);
+  assert.equal(toolList.body.accessPolicy.hiddenUnstable.length, 5);
+
+  const unauthenticatedMetered = await Promise.all(
+    [...METERED_HIGH_COST, 'passport-photo', 'ocr'].map(tool => fetch(`${baseUrl}/api/tools/${tool}`, { method: 'POST' }))
   );
-  unauthenticatedResults.forEach(response => assert.equal(response.status, 401));
+  unauthenticatedMetered.forEach(response => assert.equal(response.status, 401));
+
+  for (const tool of [...PUBLIC_LOW_COST, 'rotate-tool', 'flip-tool', 'compress-image']) {
+    const response = await fetch(`${baseUrl}/api/tools/${tool}`, { method: 'POST' });
+    assert.equal(response.status, 400);
+  }
+
+  const hiddenResults = await Promise.all(
+    HIDDEN_UNSTABLE.map(tool => fetch(`${baseUrl}/api/tools/${tool}`, { method: 'POST' }))
+  );
+  hiddenResults.forEach(response => assert.equal(response.status, 404));
+  assert.equal((await fetch(`${baseUrl}/api/tools/compress-arbitrary`, { method: 'POST' })).status, 404);
 
   const freeRegistration = await register(baseUrl, `free-${Date.now()}@example.com`);
   assert.equal(freeRegistration.response.status, 201);
@@ -159,6 +167,17 @@ try {
   assert.deepEqual(initialUsage.body, {
     plan: 'free', limit: 5, used: 0, remaining: 5, period: currentPeriod
   });
+
+  for (const [tool, fields] of [
+    ['rotate', {}],
+    ['resize-pixel', { width: 16, height: 16 }],
+    ['jpeg-to-png', {}]
+  ]) {
+    const response = await processImage(baseUrl, tool, null, { fields });
+    assert.equal(response.status, 200, `${tool} should be public`);
+  }
+  const usageAfterPublicTools = await getUsage(baseUrl, freeToken);
+  assert.equal(usageAfterPublicTools.body.used, 0);
 
   const profilePlanInjection = await requestJson(`${baseUrl}/api/profile`, {
     method: 'PUT',
@@ -179,13 +198,13 @@ try {
   assert.equal(usageAfterProfileInjection.body.limit, 5);
 
   // Invalid processing must be refunded before the error response completes.
-  const failedProcessing = await processImage(baseUrl, 'rotate', freeToken, { valid: false });
-  assert.equal(failedProcessing.status, 500);
+  const failedProcessing = await processImage(baseUrl, 'remove-background', freeToken, { valid: false });
+  assert.equal(failedProcessing.status, 400);
   const usageAfterFailure = await getUsage(baseUrl, freeToken);
   assert.equal(usageAfterFailure.body.used, 0);
 
   // Request-controlled fields and headers must not elevate a database-backed plan.
-  const spoofedPlan = await processImage(baseUrl, 'grayscale', freeToken, {
+  const spoofedPlan = await processImage(baseUrl, 'remove-background', freeToken, {
     fields: { plan: 'pro', membershipStatus: 'active' },
     headers: { 'X-Plan': 'pro', 'X-Membership-Status': 'active' }
   });
@@ -197,8 +216,7 @@ try {
 
   // Leave exactly one free request, then race ten valid requests for it.
   for (let index = 1; index < 4; index += 1) {
-    const tool = index % 2 === 0 ? 'rotate' : 'flip';
-    const response = await processImage(baseUrl, tool, freeToken);
+    const response = await processImage(baseUrl, 'remove-background', freeToken);
     assert.equal(response.status, 200, `free request ${index + 1} should succeed`);
   }
 
@@ -207,7 +225,7 @@ try {
   assert.equal(beforeConcurrency.body.remaining, 1);
 
   const concurrentResponses = await Promise.all(
-    Array.from({ length: 10 }, () => processImage(baseUrl, 'rotate', freeToken))
+    Array.from({ length: 10 }, () => processImage(baseUrl, 'remove-background', freeToken))
   );
   const concurrentSuccesses = concurrentResponses.filter(response => response.status === 200);
   const concurrentRejections = concurrentResponses.filter(response => response.status === 429);
@@ -227,14 +245,14 @@ try {
   assert.equal(exhaustedUsage.body.used, 5);
   assert.equal(exhaustedUsage.body.remaining, 0);
 
-  const sixth = await processImage(baseUrl, 'rotate', freeToken);
+  const sixth = await processImage(baseUrl, 'remove-background', freeToken);
   assert.equal(sixth.status, 429);
   assert.equal((await sixth.json()).error, 'quota_exceeded');
 
-  // With quota exhausted, every concrete public processing path must be stopped
-  // at the common quota entry, even if the tool request itself has no file.
+  // With quota exhausted, every metered path is stopped at the common quota
+  // entry, while public and hidden policies remain independent.
   const exhaustedCoverage = await Promise.all(
-    [...toolList.body.tools, ...aliases].map(tool => fetch(`${baseUrl}/api/tools/${tool}`, {
+    [...METERED_HIGH_COST, 'passport-photo', 'ocr'].map(tool => fetch(`${baseUrl}/api/tools/${tool}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${freeToken}` }
     }))
@@ -273,10 +291,10 @@ try {
 
   // Exercise every mounted processing category with valid images.
   const categoryRequests = [
-    ['image-compressor', {}],
-    ['jpeg-to-png', {}],
-    ['resize-pixel', { width: 16, height: 16 }],
-    ['grayscale', {}],
+    ['reduce-size-kb', { targetKB: 10 }],
+    ['jpg-to-pdf-50kb', {}],
+    ['super-resolution', { scale: 2 }],
+    ['remove-background', {}],
     ['passport-photo-advanced', { size: '2x2', dpi: 72 }]
   ];
   for (const [tool, fields] of categoryRequests) {
@@ -314,7 +332,8 @@ try {
   assert.equal(noExpiryUsage.body.plan, 'free');
   assert.equal(noExpiryUsage.body.limit, 5);
 
-  console.log('PASS all 81 public image tools and compatibility aliases require authentication');
+  console.log('PASS 39 public tools bypass auth while 37 metered tools require it and 5 hidden tools return 404');
+  console.log('PASS public tools do not create or increment Usage');
   console.log('PASS free users receive 5 monthly uses and the 6th returns quota_exceeded');
   console.log('PASS ten concurrent requests can consume at most one remaining use');
   console.log('PASS unsuccessful image processing is refunded before the response completes');

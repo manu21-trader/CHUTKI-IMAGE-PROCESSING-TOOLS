@@ -81,8 +81,8 @@ router.post('/:tool', async (req, res, next) => {
       }
       case 'resize-35x45cm': {
         const dpi=parseInt(req.body.dpi)||300;
-        processedBuffer=await sharp(fileBuffer).resize(Math.round((35/2.54)*dpi),Math.round((45/2.54)*dpi),{fit:'fill'}).jpeg({quality:95}).toBuffer();
-        filename=customFilename?`${customFilename}.jpg`:`35x45cm_${Date.now()}.jpg`; break;
+        processedBuffer=await sharp(fileBuffer).resize(Math.round((35/25.4)*dpi),Math.round((45/25.4)*dpi),{fit:'fill'}).jpeg({quality:95}).toBuffer();
+        filename=customFilename?`${customFilename}.jpg`:`35x45mm_${Date.now()}.jpg`; break;
       }
       case 'resize-2x2': {
         const {dpi=300}=req.body;const px=Math.round(2*parseInt(dpi));

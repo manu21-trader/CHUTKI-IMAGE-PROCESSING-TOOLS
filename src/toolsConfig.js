@@ -1,7 +1,8 @@
 // src/toolsConfig.js
 import config from './config.js';
+import { isHiddenTool } from '../shared/toolAccessPolicy.js';
 
-export const toolsConfig = {
+const completeToolsConfig = {
   "Image Editing Tools": [
     {
       name: "Passport Photo Maker",
@@ -664,6 +665,15 @@ export const toolsConfig = {
 
   ]
 };
+
+// Tool definitions remain available in source, while the shared access policy
+// controls which entries are exposed in ordinary user-facing lists.
+export const toolsConfig = Object.fromEntries(
+  Object.entries(completeToolsConfig).map(([category, tools]) => [
+    category,
+    tools.filter(tool => !isHiddenTool(tool.route.split('/').pop()))
+  ])
+);
 
 // Helper function to get tool by name
 export const getToolByName = (name) => {

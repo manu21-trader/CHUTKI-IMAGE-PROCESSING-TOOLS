@@ -4,11 +4,11 @@ import toast from 'react-hot-toast';
 import config from '../../config';
 import FileUploadZone from '../shared/FileUploadZone';
 import passportCountries from '../../data/passportCountries';
-import { detectFace, checkCompliance } from '../../utils/faceDetection';
-import FaceDetectionOverlay from '../FaceDetectionOverlay';
 import { useAuth } from '../../context/AuthContext';
 import { useUsage } from '../../context/UsageContext';
 import { getProcessingErrorMessage } from '../../utils/quotaError';
+
+const FACE_DETECTION_AVAILABLE = false;
 
 const PassportPhotoTool = () => {
   const navigate = useNavigate();
@@ -87,58 +87,8 @@ const PassportPhotoTool = () => {
   };
 
   // Handle face detection
-  const handleDetectFace = async () => {
-    if (!preview || !imageRef.current) {
-      toast.error('请先上传图片。');
-      return;
-    }
-
-    setDetectingFace(true);
-    toast.loading('正在检测人脸...', { id: 'face-detection' });
-
-    try {
-      // Create image element from preview
-      const img = new Image();
-      img.src = preview;
-      
-      await new Promise((resolve) => {
-        img.onload = resolve;
-      });
-
-      // Detect face
-      const detection = await detectFace(img);
-
-      if (!detection.success) {
-        toast.error('未检测到清晰人脸，请更换图片后重试。', { id: 'face-detection' });
-        setFaceDetection(null);
-        return;
-      }
-
-      setFaceDetection(detection);
-      toast.success(`已检测到人脸，置信度 ${(detection.confidence * 100).toFixed(1)}%`, { id: 'face-detection' });
-
-      // Check compliance
-      const countryReqs = passportCountries[formData.country];
-      if (countryReqs) {
-        const compliance = checkCompliance(
-          detection,
-          { width: img.width, height: img.height },
-          countryReqs
-        );
-        setComplianceResults(compliance);
-
-        if (compliance.overall) {
-          toast.success('✅ 照片符合全部检查要求！');
-        } else {
-          toast.error('⚠️ 照片存在不符合要求的项目。');
-        }
-      }
-    } catch (error) {
-      console.error('Face detection error:', error);
-      toast.error('人脸检测失败，请稍后重试。', { id: 'face-detection' });
-    } finally {
-      setDetectingFace(false);
-    }
+  const handleDetectFace = () => {
+    toast.error('人脸检测功能暂未开放。');
   };
 
   // Handle auto-centering
@@ -394,7 +344,7 @@ const PassportPhotoTool = () => {
               )}
 
               {/* AI Face Detection Button */}
-              {file && (
+              {FACE_DETECTION_AVAILABLE && file && (
                 <div className="space-y-3">
                   <button
                     type="button"

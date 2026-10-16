@@ -1,8 +1,9 @@
 // src/data/conversionToolsConfig.js
 // Sourced from toolsConfig.js - Image Conversion Tools list for category hub page
 import config from '../config.js';
+import { isHiddenTool } from '../../shared/toolAccessPolicy.js';
 
-export const conversionToolsConfig = [
+const allConversionToolsConfig = [
   { name: "HEIC to JPG", route: "/tools/heic-to-jpg", description: "Convert HEIC images to JPG format", endpoint: `${config.API_BASE_URL}/api/tools/heic-to-jpg` },
   { name: "WEBP to JPG", route: "/tools/webp-to-jpg", description: "Convert WEBP images to JPG format", endpoint: `${config.API_BASE_URL}/api/tools/webp-to-jpg` },
   { name: "JPEG to PNG", route: "/tools/jpeg-to-png", description: "Convert JPEG images to PNG format", endpoint: `${config.API_BASE_URL}/api/tools/jpeg-to-png` },
@@ -17,3 +18,7 @@ export const conversionToolsConfig = [
   { name: "Image To PDF", route: "/tools/image-to-pdf", description: "Convert any image format to PDF", endpoint: `${config.API_BASE_URL}/api/tools/image-to-pdf` },
   { name: "PDF To JPG", route: "/tools/pdf-to-jpg", description: "Convert PDF pages to JPG images", endpoint: `${config.API_BASE_URL}/api/tools/pdf-to-jpg` },
 ];
+
+export const conversionToolsConfig = allConversionToolsConfig.filter(
+  tool => !isHiddenTool(tool.route.split('/').pop())
+);

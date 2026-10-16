@@ -1,8 +1,9 @@
 // src/data/editingToolsConfig.js
 // Sourced from toolsConfig.js - Image Editing Tools list for category hub page
 import config from '../config.js';
+import { isHiddenTool } from '../../shared/toolAccessPolicy.js';
 
-export const editingToolsConfig = [
+const allEditingToolsConfig = [
   { name: "Passport Photo Maker", route: "/tools/passport-photo", description: "Generate professional passport photos with custom sizes", endpoint: `${config.API_BASE_URL}/api/tools/passport-photo-advanced` },
   { name: "Reduce Image Size in KB", route: "/tools/reduce-size-kb", description: "Reduce image file size to specific KB target", endpoint: `${config.API_BASE_URL}/api/tools/reduce-size-kb` },
   { name: "Resize Image Pixel", route: "/tools/resize-pixel", description: "Resize image by pixel dimensions", endpoint: `${config.API_BASE_URL}/api/tools/resize-pixel` },
@@ -51,3 +52,7 @@ export const editingToolsConfig = [
   { name: "Super Resolution (Increase Image Quality)", route: "/tools/super-resolution", description: "Enhance image quality using AI upscaling", endpoint: `${config.API_BASE_URL}/api/tools/super-resolution` },
   { name: "Ai Face Generator (This Person Not Exist)", route: "/tools/ai-face-generator", description: "Generate AI faces that don't exist", endpoint: `${config.API_BASE_URL}/api/tools/ai-face-generator` },
 ];
+
+export const editingToolsConfig = allEditingToolsConfig.filter(
+  tool => !isHiddenTool(tool.route.split('/').pop())
+);

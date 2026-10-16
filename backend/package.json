@@ -12,6 +12,8 @@
     "test": "node test-endpoints.js",
     "test:auth": "node test-auth.js",
     "test:usage": "node test-usage.js",
+    "test:tool-access": "node test-tool-access.js",
+    "test:quota:isolated": "node test-quota-isolated.js",
     "test:grant-pro": "node test-grant-pro.js",
     "test:endpoints": "node test-endpoints.js",
     "grant-pro": "node scripts/grant-pro.js",

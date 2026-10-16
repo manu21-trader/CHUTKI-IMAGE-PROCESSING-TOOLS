@@ -92,7 +92,7 @@ const FileUploadZone = ({
     : '选择图片，或将文件拖到这里';
   const uploadHint = isPdf
     ? '支持 PDF 格式'
-    : '支持 JPG、PNG、WEBP、HEIC 格式';
+    : '支持 JPG、PNG、WEBP 等常用图片格式，单文件最大 8 MiB';
   const buttonLabel = isPdf ? '选择 PDF' : '选择图片';
 
   // Realistic SVG icons — camera for images, document for PDFs

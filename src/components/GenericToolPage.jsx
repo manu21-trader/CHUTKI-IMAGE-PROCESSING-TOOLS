@@ -8,6 +8,7 @@ import { useAuth } from "../context/AuthContext";
 import { useUsage } from "../context/UsageContext";
 import { getProcessingErrorMessage } from "../utils/quotaError";
 import { getToolDescriptionZh, getToolNameZh } from "../utils/toolText";
+import { TOOL_ACCESS, getToolAccess } from '../../shared/toolAccessPolicy.js';
 
 const GenericToolPage = () => {
   const { toolName } = useParams();
@@ -190,7 +191,9 @@ const GenericToolPage = () => {
             const isPng = contentType.includes('png');
             setResult({ type: 'image', url, filename: customFilename.trim() ? `${customFilename.trim()}.${isPng?'png':'jpg'}` : `processed-${Date.now()}.${isPng?'png':'jpg'}` });
           }
-          await refreshUsage();
+          if (getToolAccess(toolName) === TOOL_ACCESS.METERED_HIGH_COST) {
+            await refreshUsage();
+          }
           lastError = null;
           break; // Success — stop retrying
         } else {
@@ -312,7 +315,7 @@ const GenericToolPage = () => {
       // ── Scale ──
       case 'scale': return (
         <div key={field}>{label('放大倍数')}
-        {sel('scale', [['2','2 倍分辨率'],['3','3 倍分辨率'],['4','4 倍分辨率']])}
+        {sel('scale', [['2','2 倍分辨率']])}
         {hint('倍数越高，输出越大，处理时间也越长')}</div>
       );
       // ── Opacity slider ──
@@ -370,8 +373,8 @@ const GenericToolPage = () => {
       // ── Language (OCR) ──
       case 'language': case 'lang': return (
         <div key={field}>{label('OCR 文字语言')}
-        {sel(field, [['eng','英语'],['hin','印地语'],['fra','法语'],['spa','西班牙语'],['deu','德语'],['ita','意大利语'],['por','葡萄牙语'],['chi_sim','简体中文']])}
-        {hint('请选择图片中的文字语言，以提高 OCR 识别准确率')}</div>
+        {sel(field, [['eng','英语']])}
+        {hint('第一版仅使用服务器内置的英语 OCR 模型')}</div>
       );
       // ── Page size (PDF) ──
       case 'pageSize': return (
@@ -381,11 +384,11 @@ const GenericToolPage = () => {
       );
       // ── Width / Height numbers ──
       case 'width': return (
-        <div key={field}>{label('宽度')}{num('width', 1, 10000)}
+        <div key={field}>{label('宽度')}{num('width', 1, 6000)}
         {hint('请按所选单位输入宽度')}</div>
       );
       case 'height': return (
-        <div key={field}>{label('高度')}{num('height', 1, 10000)}
+        <div key={field}>{label('高度')}{num('height', 1, 6000)}
         {hint('请按所选单位输入高度')}</div>
       );
       // ── Unit ──
@@ -396,10 +399,10 @@ const GenericToolPage = () => {
       );
       // ── Rows / Cols ──
       case 'rows': return (
-        <div key={field}>{label('行数')}{sel('rows', [['1','1'],['2','2'],['3','3'],['4','4'],['5','5']])}</div>
+        <div key={field}>{label('行数')}{sel('rows', [['1','1'],['2','2'],['3','3']])}</div>
       );
       case 'cols': return (
-        <div key={field}>{label('列数')}{sel('cols', [['1','1'],['2','2'],['3','3'],['4','4'],['5','5']])}</div>
+        <div key={field}>{label('列数')}{sel('cols', [['1','1'],['2','2'],['3','3']])}</div>
       );
       // ── Spacing ──
       case 'spacing': return (
