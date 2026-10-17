@@ -1,87 +1,53 @@
-version: "3.8"
-
 services:
-  # 1. MongoDB Database Service
   mongodb:
     image: mongo:7.0
-    container_name: chutki-mongodb
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?set MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD}
       MONGO_INITDB_DATABASE: chutki
-    ports:
-      - "27017:27017"
     volumes:
       - mongodb_data:/data/db
     networks:
       - chutki-network
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 15s
 
-  # 2. Backend API Service
-  backend:
+  app:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
-    container_name: chutki-backend
     restart: unless-stopped
     ports:
-      - "5001:5001"
+      - "${APP_PORT:-5001}:5001"
     environment:
       NODE_ENV: production
       PORT: 5001
-      MONGODB_URI: mongodb://admin:password123@mongodb:27017/chutki?authSource=admin
-      # Allow requests from the frontend container (nginx) and host
-      CLIENT_URL: http://localhost:5173 
-      
-      # Security Secrets - CHANGE THESE in production
-      JWT_SECRET: ${JWT_SECRET:-your-super-secure-jwt-secret}
-      SESSION_SECRET: ${SESSION_SECRET:-your-super-secure-session-secret}
-      
-      # Optional Configs
-      # GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      # GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      # SENDGRID_API_KEY: ${SENDGRID_API_KEY}
-      # FROM_EMAIL: ${FROM_EMAIL}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:5001}
+      MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME:?set MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD}@mongodb:27017/chutki?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      DISABLE_AI_CHAT: "true"
     depends_on:
       mongodb:
         condition: service_healthy
-    volumes:
-      - ./backend/uploads:/app/uploads
     networks:
       - chutki-network
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5001/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:5001/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
       interval: 30s
-      timeout: 10s
+      timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 15s
 
-  # 3. Frontend Web Service
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-    container_name: chutki-frontend
-    restart: unless-stopped
-    ports:
-      - "5173:80" # Map host 5173 to Nginx 80
-    depends_on:
-      - backend
-    networks:
-      - chutki-network
-
-# Persistent volumes
 volumes:
   mongodb_data:
-    driver: local
 
-# Network for container communication
 networks:
   chutki-network:
     driver: bridge

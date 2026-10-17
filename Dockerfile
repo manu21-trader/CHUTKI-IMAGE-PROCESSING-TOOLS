@@ -1,83 +1,54 @@
-# Multi-stage Docker build for CHUTKI
-# Stage 1: Build frontend
-FROM node:18-alpine AS frontend-build
+# syntax=docker/dockerfile:1.7
+# Production image: build the React frontend, then serve it from the API process.
+FROM node:22-bookworm-slim AS frontend-build
 
-# Add metadata labels
-LABEL maintainer="CHUTKI Team"
-LABEL description="CHUTKI - AI-Powered Image Processing Platform"
-LABEL version="1.0.0"
-
-# Set working directory for frontend
-WORKDIR /app/frontend
-
-# Copy frontend package files (for better layer caching)
-COPY package*.json ./
-COPY vite.config.js ./
-COPY tailwind.config.js ./
-COPY postcss.config.js ./
-COPY eslint.config.js ./
-COPY index.html ./
-
-# Install frontend dependencies (including devDependencies for build tools)
-RUN npm install
-
-# Copy frontend source code
-COPY src/ ./src/
-COPY public/ ./public/
-
-# Build frontend
-RUN npm run build
-
-# Stage 2: Backend production image
-FROM node:18-alpine AS backend
-
-# Add metadata labels
-LABEL maintainer="CHUTKI Team"
-LABEL description="CHUTKI Backend with Frontend Assets"
-
-# Install system dependencies for Sharp and Canvas
-RUN apk add --no-cache \
-    cairo-dev \
-    jpeg-dev \
-    pango-dev \
-    giflib-dev \
-    librsvg-dev \
-    pixman-dev \
-    pangomm-dev \
-    libjpeg-turbo-dev \
-    freetype-dev
-
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
-# Set working directory
 WORKDIR /app
 
-# Copy backend package files
-COPY backend/package*.json ./
+COPY package.json package-lock.json ./
+RUN --mount=type=secret,id=npm_ca,required=false \
+    if [ -f /run/secrets/npm_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/npm_ca; fi; \
+    npm ci
 
-# Install backend dependencies
-RUN npm install --production
+COPY index.html vite.config.js tailwind.config.js postcss.config.js ./
+COPY src ./src
+COPY shared ./shared
+COPY public ./public
 
-# Copy backend source code
-COPY --chown=nodejs:nodejs backend/ ./
+ARG VITE_API_BASE_URL=""
+ARG VITE_FRONTEND_URL=""
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ENV VITE_FRONTEND_URL=${VITE_FRONTEND_URL}
 
-# Copy built frontend from previous stage
-COPY --from=frontend-build --chown=nodejs:nodejs /app/frontend/dist ./public
+RUN npm run build
 
-# Create uploads directory with proper permissions
-RUN mkdir -p uploads && chown -R nodejs:nodejs /app
+FROM node:22-bookworm-slim AS backend-dependencies
 
-# Switch to non-root user
-USER nodejs
+WORKDIR /app/backend
+COPY backend/package.json backend/package-lock.json ./
+RUN --mount=type=secret,id=npm_ca,required=false \
+    if [ -f /run/secrets/npm_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/npm_ca; fi; \
+    npm ci --omit=dev
 
-# Expose port
+FROM node:22-bookworm-slim AS production
+
+ENV NODE_ENV=production \
+    PORT=5001 \
+    DISABLE_AI_CHAT=true
+
+WORKDIR /app/backend
+
+COPY --from=backend-dependencies /app/backend/node_modules ./node_modules
+COPY --chown=node:node backend ./
+COPY --chown=node:node shared /app/shared
+COPY --from=frontend-build --chown=node:node /app/dist ./public
+
+RUN mkdir -p uploads public/payment && chown -R node:node /app
+
+USER node
+
 EXPOSE 5001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:5001/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "const p=process.env.PORT||5001; require('http').get({host:'127.0.0.1',port:p,path:'/api/health'},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
-# Start the application
 CMD ["npm", "start"]

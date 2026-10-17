@@ -3,10 +3,15 @@
 
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 const FROM_EMAIL = process.env.EMAIL_FROM || 'onboarding@resend.dev';
 const APP_NAME = 'CHUTKI Image Tools';
+
+const getResendClient = () => {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email service is not configured');
+  }
+  return new Resend(process.env.RESEND_API_KEY);
+};
 
 /**
  * Send password reset email with a clickable link
@@ -15,6 +20,7 @@ const APP_NAME = 'CHUTKI Image Tools';
  * @param {string} resetUrl - Full reset URL (e.g. https://yoursite.com/reset-password?token=xxx)
  */
 export const sendPasswordResetEmail = async (toEmail, resetToken, resetUrl) => {
+  const resend = getResendClient();
   const { data, error } = await resend.emails.send({
     from: `${APP_NAME} <${FROM_EMAIL}>`,
     to: [toEmail],

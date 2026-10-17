@@ -1,12 +1,11 @@
 // Configuration for CHUTKI Image Tools
 const config = {
-  // Backend API URL - Use environment variable or fallback to localhost
-  API_BASE_URL: import.meta.env.VITE_API_BASE_URL ||
-    (import.meta.env.PROD ? 'https://chutki-backend-bfcn.onrender.com' : 'http://localhost:5001'),
+  // Empty means same-origin. This is the portable production default when the
+  // backend serves the built frontend; split deployments can set an absolute URL.
+  API_BASE_URL: (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, ''),
 
-  // Frontend URL - Use localhost for development, production URL for production
   FRONTEND_URL: import.meta.env.VITE_FRONTEND_URL ||
-    (import.meta.env.PROD ? 'https://chutki-image-tool.netlify.app' : 'http://localhost:5173'),
+    (typeof window !== 'undefined' ? window.location.origin : ''),
 
   // API endpoints
   ENDPOINTS: {

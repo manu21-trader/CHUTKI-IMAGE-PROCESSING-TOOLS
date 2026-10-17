@@ -496,7 +496,7 @@ app.get("/api/health", (req, res) => {
     keepAlive: true
   };
 
-  const response = successResponse({ message: 'Service healthy', data: healthData });
+  const response = successResponse('Service healthy', healthData);
 
   // Cache the response
   healthCache = response;
@@ -553,6 +553,27 @@ app.use((err, req, res, next) => {
   );
 });
 
+// In the combined production image the Vite build is copied to backend/public.
+// API routes keep their JSON behavior, while browser routes use the SPA entrypoint.
+const frontendDir = path.join(__dirname, 'public');
+const frontendIndex = path.join(frontendDir, 'index.html');
+if (process.env.NODE_ENV === 'production' && fs.existsSync(frontendIndex)) {
+  app.use(express.static(frontendDir, {
+    index: false,
+    maxAge: '1y',
+    immutable: true
+  }));
+  app.get('*', (req, res, next) => {
+    if (req.path === '/api' || req.path.startsWith('/api/') ||
+        req.path.startsWith('/uploads/') || path.extname(req.path)) {
+      return next();
+    }
+    res.setHeader('Cache-Control', 'no-cache');
+    return res.sendFile(frontendIndex);
+  });
+  console.log(`[FRONTEND] Serving production build from ${frontendDir}`);
+}
+
 // 404 handler
 app.use("*", (req, res) => {
   res.status(404).json({
@@ -604,6 +625,14 @@ const startServer = () => {
       const serverUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
       initColdStartPrevention(serverUrl);
       console.log(`[COLD-START] [SHIELD] 100% uptime protection enabled`);
+    });
+
+    // A process that failed to bind is not healthy and cannot serve traffic.
+    // Exit so Docker/systemd/cloud platforms can restart it instead of leaving
+    // a timer-only zombie process alive behind a failing health check.
+    server.on('error', (error) => {
+      console.error(`[ERROR] HTTP server failed to listen on port ${PORT}:`, error.message);
+      process.exit(1);
     });
 
     // Connect to database completely asynchronously in the background

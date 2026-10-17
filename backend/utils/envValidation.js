@@ -12,7 +12,7 @@ const optionalEnvVars = {
   PORT: '5001',
   NODE_ENV: 'development',
   JWT_EXPIRES_IN: '7d',
-  MAX_FILE_SIZE: '10485760', // 10MB
+  MAX_FILE_SIZE: '8388608', // 8 MiB; the shared image middleware is authoritative
   FILE_RETENTION_MINUTES: '30',
   UPLOAD_DIR: 'uploads',
   CLIENT_URL: 'http://localhost:3000',

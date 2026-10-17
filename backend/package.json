@@ -6,8 +6,8 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "start": "node --expose-gc --max-old-space-size=512 --optimize-for-size server.js",
-    "serve": "node --expose-gc --max-old-space-size=512 --optimize-for-size server.js",
+    "start": "node --expose-gc --max-old-space-size=384 --optimize-for-size server.js",
+    "serve": "node --expose-gc --max-old-space-size=384 --optimize-for-size server.js",
     "dev": "nodemon --expose-gc --max-old-space-size=512 server.js",
     "test": "node test-endpoints.js",
     "test:auth": "node test-auth.js",
@@ -24,8 +24,8 @@
     "monitor": "node ../monitor-uptime.js"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=8.0.0"
+    "node": ">=22.12.0",
+    "npm": ">=10.0.0"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -51,7 +51,7 @@
     "pdf2pic": "^3.1.1",
     "pdfkit": "^0.14.0",
     "resend": "^6.9.4",
-    "sharp": "^0.32.6",
+    "sharp": "^0.35.5",
     "tesseract.js": "^5.0.2",
     "validator": "^13.11.0"
   },
