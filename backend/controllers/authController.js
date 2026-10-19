@@ -21,6 +21,7 @@ const serializeAuthUser = (user) => ({
   email: user.email,
   avatar: user.avatar,
   provider: user.provider,
+  createdAt: user.createdAt,
   plan: user.subscription?.plan || 'free',
   membershipStatus: user.subscription?.status || 'active',
   membershipExpiresAt: user.subscription?.endDate || null

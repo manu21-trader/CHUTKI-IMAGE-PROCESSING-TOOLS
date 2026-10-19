@@ -37,25 +37,14 @@ const Profile = () => {
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'Unknown';
+    if (!dateString) return '创建时间暂不可用';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
+    if (Number.isNaN(date.getTime())) return '创建时间暂不可用';
+    return date.toLocaleDateString('zh-CN', {
       year: 'numeric', 
       month: 'long', 
       day: 'numeric' 
     });
-  };
-
-  const getAccountAge = () => {
-    if (!user?.createdAt) return 'Unknown';
-    const created = new Date(user.createdAt);
-    const now = new Date();
-    const diffTime = Math.abs(now - created);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 30) return `${diffDays} days`;
-    if (diffDays < 365) return `${Math.floor(diffDays / 30)} months`;
-    return `${Math.floor(diffDays / 365)} years`;
   };
 
   return (
@@ -112,7 +101,7 @@ const Profile = () => {
                       Active Member
                     </span>
                     <span className="text-purple-100 text-sm">
-                      {getAccountAge()} with us
+                      注册于 {formatDate(user?.createdAt)}
                     </span>
                   </div>
                 </div>
@@ -167,12 +156,11 @@ const Profile = () => {
                   <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
                     <div className="flex items-center justify-between">
                       <p className="text-gray-900 dark:text-white font-medium">{user?.email}</p>
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                        <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                        Verified
-                      </span>
+                      {user?.provider === 'local' && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                          邮箱账号
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Email cannot be changed</p>
                   </div>
@@ -192,11 +180,10 @@ const Profile = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Member Since
+                    注册时间
                   </label>
                   <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <p className="text-gray-900 dark:text-white font-medium">{formatDate(user?.createdAt)}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{getAccountAge()} ago</p>
                   </div>
                 </div>
 

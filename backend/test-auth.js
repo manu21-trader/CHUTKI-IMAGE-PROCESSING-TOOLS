@@ -74,6 +74,8 @@ try {
       JWT_SECRET: 'test-only-jwt-secret-that-is-long-enough',
       SESSION_SECRET: 'test-only-session-secret-that-is-long-enough',
       RESEND_API_KEY: 're_test_only_not_a_real_key',
+      GOOGLE_CLIENT_ID: '',
+      GOOGLE_CLIENT_SECRET: '',
       NODE_ENV: 'test',
       CLIENT_URL: 'http://localhost:5173'
     },
@@ -84,6 +86,10 @@ try {
   backendProcess.stderr.on('data', chunk => { output += chunk.toString(); });
 
   await waitForDatabase(baseUrl, () => output);
+
+  const statusResult = await requestJson(`${baseUrl}/api/auth/status`);
+  assert.equal(statusResult.response.status, 200);
+  assert.equal(statusResult.body.features?.googleOAuth, false);
 
   const email = `mvp-${Date.now()}@example.com`;
   const password = 'test-password-123';
@@ -97,7 +103,16 @@ try {
   assert.equal(registerResult.body.success, true);
   assert.equal(registerResult.body.user.plan, 'free');
   assert.equal(registerResult.body.user.membershipStatus, 'active');
+  assert.ok(Date.parse(registerResult.body.user.createdAt), 'Registration must return createdAt');
   assert.ok(registerResult.body.token);
+
+  const duplicateRegisterResult = await requestJson(`${baseUrl}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'Duplicate User', email, password })
+  });
+  assert.ok([400, 409].includes(duplicateRegisterResult.response.status));
+  assert.equal(duplicateRegisterResult.body.success, false);
 
   databaseConnection = await mongoose.connect(mongoUri);
   await User.init();
@@ -106,6 +121,11 @@ try {
   assert.equal(storedUser.subscription.plan, 'free');
   assert.equal(storedUser.subscription.status, 'active');
   assert.notEqual(storedUser.password, password, 'Password must not be stored as plaintext');
+  assert.equal(
+    new Date(registerResult.body.user.createdAt).toISOString(),
+    storedUser.createdAt.toISOString(),
+    'Registration must return the persisted createdAt value'
+  );
 
   const phoneUser = await User.create({
     name: 'Phone Test User',
@@ -129,6 +149,14 @@ try {
   assert.equal(wechatUser.email, undefined);
   assert.equal(qqUser.email, undefined);
 
+  const wrongPasswordResult = await requestJson(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password: 'definitely-wrong-password' })
+  });
+  assert.equal(wrongPasswordResult.response.status, 401);
+  assert.equal(wrongPasswordResult.body.success, false);
+
   const loginResult = await requestJson(`${baseUrl}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -139,7 +167,17 @@ try {
   assert.equal(loginResult.body.success, true);
   assert.equal(loginResult.body.user.id, storedUser._id.toString());
   assert.equal(loginResult.body.user.plan, 'free');
+  assert.equal(
+    new Date(loginResult.body.user.createdAt).toISOString(),
+    storedUser.createdAt.toISOString()
+  );
   assert.ok(loginResult.body.token);
+
+  const logoutResult = await requestJson(`${baseUrl}/api/auth/logout`, {
+    method: 'POST'
+  });
+  assert.equal(logoutResult.response.status, 200);
+  assert.equal(logoutResult.body.success, true);
 
   const missingTokenResult = await requestJson(`${baseUrl}/api/auth/profile`);
   assert.equal(missingTokenResult.response.status, 401);
@@ -156,6 +194,10 @@ try {
   assert.equal(verifyResult.response.status, 200);
   assert.equal(verifyResult.body.user.id, storedUser._id.toString());
   assert.equal(verifyResult.body.user.email, email);
+  assert.equal(
+    new Date(verifyResult.body.user.createdAt).toISOString(),
+    storedUser.createdAt.toISOString()
+  );
 
   const profileResult = await requestJson(`${baseUrl}/api/auth/profile`, {
     headers: { Authorization: `Bearer ${loginResult.body.token}` }
@@ -164,6 +206,10 @@ try {
   assert.equal(profileResult.response.status, 200);
   assert.equal(profileResult.body.user.id, storedUser._id.toString());
   assert.equal(profileResult.body.user.plan, 'free');
+  assert.equal(
+    new Date(profileResult.body.user.createdAt).toISOString(),
+    storedUser.createdAt.toISOString()
+  );
 
   const sourceImage = await sharp({
     create: { width: 32, height: 16, channels: 3, background: '#663399' }
@@ -183,9 +229,14 @@ try {
   assert.equal(rotatedMetadata.height, 32);
 
   console.log('PASS registration persisted a user');
+  console.log('PASS registration returns a JWT for immediate login');
+  console.log('PASS duplicate email registration is rejected');
   console.log('PASS new user defaults to free/active membership');
   console.log('PASS phone, WeChat, and QQ identities can exist without email/password');
-  console.log('PASS login returns a valid JWT');
+  console.log('PASS correct password returns a valid JWT and wrong password is rejected');
+  console.log('PASS logout endpoint responds successfully');
+  console.log('PASS Google OAuth status is false without credentials');
+  console.log('PASS register, login, verify-token, and profile return persisted createdAt');
   console.log('PASS missing and invalid JWTs are rejected');
   console.log('PASS protected endpoints identify the current user');
   console.log('PASS rotate image processing still works');
