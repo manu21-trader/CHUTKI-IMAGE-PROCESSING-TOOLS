@@ -91,6 +91,7 @@ public/payment/*
 !public/payment/README.md
 # A real personal payment QR is provisioned separately during deployment.
 public/payment/wechat-qr.png
+backend/public/payment/wechat-qr.png
 
 # Vuepress build output
 .vuepress/dist

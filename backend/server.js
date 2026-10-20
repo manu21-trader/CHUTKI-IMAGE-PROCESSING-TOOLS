@@ -505,6 +505,24 @@ app.get("/api/health", (req, res) => {
   res.status(200).json(response);
 });
 
+// The production WeChat payment QR code is supplied through a Railway Volume
+// and is intentionally not tracked in Git.
+app.get('/payment/wechat-qr.png', (req, res) => {
+  const qrCodePath = path.join(__dirname, 'public', 'payment', 'wechat-qr.png');
+
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'no-store');
+
+  if (!fs.existsSync(qrCodePath)) {
+    return res.status(404).json({
+      success: false,
+      message: '微信收款二维码待配置'
+    });
+  }
+
+  return res.sendFile(qrCodePath);
+});
+
 // Google OAuth routes are handled in routes/auth.js
 
 // ... rest of your code ...
