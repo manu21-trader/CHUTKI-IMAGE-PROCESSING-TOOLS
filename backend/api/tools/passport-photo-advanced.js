@@ -3,6 +3,10 @@ import multer from 'multer';
 import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs';
+import {
+  PassportPhotoInputError,
+  resolvePassportPhotoSpec
+} from '../../utils/passportPhoto.js';
 
 const router = express.Router();
 
@@ -58,43 +62,13 @@ router.post('/', async (req, res) => {
       backgroundCheck = true
     } = req.body;
 
-    // Parse size dimensions
-    let width, height;
-    if (size.includes('x')) {
-      [width, height] = size.split('x').map(s => parseFloat(s));
-    } else {
-      width = height = parseFloat(size);
-    }
-
-    // Convert to pixels based on DPI
-    let pixelWidth = Math.round(width * parseInt(dpi) / 2.54);
-    let pixelHeight = Math.round(height * parseInt(dpi) / 2.54);
-    let backgroundValue = background;
-
-    // Country-specific requirements
-    const countryRequirements = {
-      'US': { width: 2, height: 2, dpi: 300, backgroundColor: '#FFFFFF', headSizeMin: 1, headSizeMax: 1.375 },
-      'UK': { width: 35, height: 45, unit: 'mm', dpi: 300, backgroundColor: '#FFFFFF', headSizeMin: 29, headSizeMax: 34 },
-      'Canada': { width: 35, height: 45, unit: 'mm', dpi: 300, backgroundColor: '#FFFFFF', headSizeMin: 31, headSizeMax: 36 },
-      'Australia': { width: 35, height: 45, unit: 'mm', dpi: 300, backgroundColor: '#FFFFFF', headSizeMin: 32, headSizeMax: 35 },
-      'India': { width: 35, height: 35, unit: 'mm', dpi: 300, backgroundColor: '#FFFFFF', headSizeMin: 29, headSizeMax: 34 },
-      'Germany': { width: 35, height: 45, unit: 'mm', dpi: 300, backgroundColor: '#FFFFFF', headSizeMin: 31, headSizeMax: 36 },
-      'France': { width: 35, height: 45, unit: 'mm', dpi: 300, backgroundColor: '#FFFFFF', headSizeMin: 31, headSizeMax: 36 },
-      'China': { width: 33, height: 48, unit: 'mm', dpi: 300, backgroundColor: '#FFFFFF', headSizeMin: 32, headSizeMax: 36 }
-    };
-
-    // Apply country-specific settings if available
-    if (countryRequirements[country]) {
-      const reqs = countryRequirements[country];
-      if (reqs.unit === 'mm') {
-        pixelWidth = Math.round(reqs.width * parseInt(dpi) / 25.4);
-        pixelHeight = Math.round(reqs.height * parseInt(dpi) / 25.4);
-      } else {
-        pixelWidth = Math.round(reqs.width * parseInt(dpi) / 2.54);
-        pixelHeight = Math.round(reqs.height * parseInt(dpi) / 2.54);
-      }
-      backgroundValue = reqs.backgroundColor;
-    }
+    const {
+      countryCode,
+      countryRequirement,
+      pixelWidth,
+      pixelHeight,
+      backgroundColor: backgroundValue
+    } = resolvePassportPhotoSpec({ country, size, dpi, background });
 
     let processor = sharp(fileObj.buffer);
 
@@ -166,13 +140,13 @@ router.post('/', async (req, res) => {
         }
 
         // Country-specific compliance checks
-        if (countryRequirements[country]) {
-          const reqs = countryRequirements[country];
-          complianceStatus.details.country = country;
+        if (countryRequirement) {
+          const reqs = countryRequirement;
+          complianceStatus.details.country = countryCode;
           complianceStatus.details.dimensions = `${reqs.width}x${reqs.height} ${reqs.unit || 'inches'}`;
 
           // Add more specific checks based on country requirements
-          if (country === 'US') {
+          if (countryCode === 'US') {
             // US passport requirements
             if (metadata.width < 600 || metadata.height < 600) {
               complianceStatus.suggestions.push('US passport photos require high resolution for best results');
@@ -227,7 +201,13 @@ router.post('/', async (req, res) => {
 
   } catch (error) {
     console.error('Advanced Passport Photo error:', error);
-    res.status(500).json({ error: 'Failed to process passport photo: ' + error.message });
+    if (error instanceof PassportPhotoInputError) {
+      return res.status(error.status).json({ error: error.code, message: error.message });
+    }
+    res.status(500).json({
+      error: 'passport_photo_processing_failed',
+      message: `证件照处理失败：${error.message}`
+    });
   }
 });
 

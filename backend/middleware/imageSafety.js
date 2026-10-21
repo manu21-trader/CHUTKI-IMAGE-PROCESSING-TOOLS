@@ -1,5 +1,9 @@
 import sharp from 'sharp';
 import { IMAGE_LIMITS, assertOutputDimensions } from '../config/imageLimits.js';
+import {
+  PassportPhotoInputError,
+  resolvePassportPhotoSpec
+} from '../utils/passportPhoto.js';
 
 let activeRequests = 0;
 const activeRequestsByIp = new Map();
@@ -56,20 +60,12 @@ const projectedOutput = (tool, body, metadata) => {
       return [metadata.reduce((sum, item) => sum + item.width, 0) + spacing * (metadata.length - 1), Math.max(...metadata.map(item => item.height))];
     }
     case 'passport-photo-advanced': {
-      const countrySizes = {
-        US: [2, 2, 'in'], UK: [35, 45, 'mm'], Canada: [35, 45, 'mm'],
-        Australia: [35, 45, 'mm'], India: [35, 35, 'mm'], Germany: [35, 45, 'mm'],
-        France: [35, 45, 'mm'], China: [33, 48, 'mm']
-      };
-      let [photoWidth, photoHeight, unit] = countrySizes[body.country || 'US'] || [];
-      if (!photoWidth) {
-        const dimensions = String(body.size || '2x2').split('x').map(Number);
-        [photoWidth, photoHeight] = dimensions;
-        unit = 'cm';
-      }
-      const unitDivisor = unit === 'mm' ? 25.4 : 2.54;
-      const pixelWidth = photoWidth * dpi / unitDivisor;
-      const pixelHeight = photoHeight * dpi / unitDivisor;
+      const { pixelWidth, pixelHeight } = resolvePassportPhotoSpec({
+        country: body.country,
+        size: body.size,
+        dpi,
+        background: body.background
+      });
       const quantity = positiveNumber(body.quantity, 1);
       const perRow = Math.ceil(Math.sqrt(quantity));
       const perColumn = Math.ceil(quantity / perRow);
@@ -182,6 +178,9 @@ export const validateImageRequest = async (req, res, next) => {
     req.imageMetadata = metadata;
     next();
   } catch (error) {
+    if (error instanceof PassportPhotoInputError) {
+      return rejectLimit(res, error.message, error.status);
+    }
     if (error?.message?.includes('pixel limit')) {
       return rejectLimit(res, 'An input image exceeds the 20 megapixel limit');
     }

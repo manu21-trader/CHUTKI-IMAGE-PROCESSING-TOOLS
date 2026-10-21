@@ -13,6 +13,7 @@
     "test:auth": "node test-auth.js",
     "test:usage": "node test-usage.js",
     "test:tool-access": "node test-tool-access.js",
+    "test:passport-photo": "node test-passport-photo.js",
     "test:quota:isolated": "node test-quota-isolated.js",
     "test:grant-pro": "node test-grant-pro.js",
     "test:endpoints": "node test-endpoints.js",

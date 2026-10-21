@@ -4,6 +4,10 @@
 import express from 'express';
 import multer from 'multer';
 import sharp from 'sharp';
+import {
+  PassportPhotoInputError,
+  resolvePassportPhotoSpec
+} from '../../utils/passportPhoto.js';
 
 const router = express.Router();
 const upload = multer({
@@ -38,26 +42,11 @@ router.post('/:tool', async (req, res, next) => {
       // ── passport-photo ───────────────────────────────────────────────────────
       case 'passport-photo': {
         const { size = '2x2', dpi = 300, background = '#FFFFFF', quantity = 1, enhance = true, country = 'US', complianceCheck = true } = req.body;
-        const countryReqs = {
-          US:{ width:2, height:2, unit:'in', backgroundColor:'#FFFFFF' },
-          UK:{ width:35, height:45, unit:'mm', backgroundColor:'#FFFFFF' },
-          Canada:{ width:35, height:45, unit:'mm', backgroundColor:'#FFFFFF' },
-          Australia:{ width:35, height:45, unit:'mm', backgroundColor:'#FFFFFF' },
-          India:{ width:35, height:35, unit:'mm', backgroundColor:'#FFFFFF' },
-          Germany:{ width:35, height:45, unit:'mm', backgroundColor:'#FFFFFF' },
-          France:{ width:35, height:45, unit:'mm', backgroundColor:'#FFFFFF' },
-          China:{ width:33, height:48, unit:'mm', backgroundColor:'#FFFFFF' }
-        };
-        let pw, ph, bg = background;
-        const d = parseInt(dpi);
-        if (countryReqs[country]) {
-          const r = countryReqs[country]; bg = r.backgroundColor;
-          if (r.unit === 'mm') { pw = Math.round(r.width * d / 25.4); ph = Math.round(r.height * d / 25.4); }
-          else { pw = Math.round(r.width * d / 2.54); ph = Math.round(r.height * d / 2.54); }
-        } else if (size.includes('x')) {
-          const [w, h] = size.split('x').map(s => parseFloat(s));
-          pw = Math.round(w * d / 2.54); ph = Math.round(h * d / 2.54);
-        } else { const s = parseFloat(size); pw = ph = Math.round(s * d / 2.54); }
+        const {
+          pixelWidth: pw,
+          pixelHeight: ph,
+          backgroundColor: bg
+        } = resolvePassportPhotoSpec({ country, size, dpi, background });
 
         let proc = await detectAndCropFace(fileBuffer);
         if (enhance === 'true' || enhance === true) proc = proc.sharpen({ sigma: 1, m1: 1, m2: 2 }).modulate({ brightness: 1.05, contrast: 1.1 });
@@ -446,6 +435,9 @@ router.post('/:tool', async (req, res, next) => {
     setImmediate(() => { processedBuffer = null; if (global.gc) global.gc(); });
   } catch (error) {
     console.error(`[EDITORS] ${req.params.tool} error:`, error.message);
+    if (error instanceof PassportPhotoInputError) {
+      return res.status(error.status).json({ error: error.code, message: error.message });
+    }
     res.status(500).json({ error: 'Edit failed: ' + error.message });
   }
 });
