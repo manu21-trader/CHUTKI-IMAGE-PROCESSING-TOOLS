@@ -4,9 +4,11 @@ import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs';
 import {
-  PassportPhotoInputError,
+  PassportPhotoError,
   resolvePassportPhotoSpec
 } from '../../utils/passportPhoto.js';
+import { calculatePassportCrop } from '../../utils/passportCrop.js';
+import { detectPrimaryFace } from '../../services/faceDetection.js';
 
 const router = express.Router();
 
@@ -22,24 +24,6 @@ const upload = multer({
     }
   }
 });
-
-// Face detection for passport photos
-const detectAndCropFace = async (buffer) => {
-  try {
-    const metadata = await sharp(buffer).metadata();
-    const { width, height } = metadata;
-
-    // Simple center crop with slight upward bias for passport photos
-    const size = Math.min(width, height);
-    const left = Math.max(0, Math.floor((width - size) / 2));
-    const top = Math.max(0, Math.floor((height - size) / 3)); // Bias upward for face
-
-    return sharp(buffer)
-      .extract({ left, top, width: size, height: size });
-  } catch (error) {
-    return sharp(buffer);
-  }
-};
 
 router.post('/', async (req, res) => {
   try {
@@ -62,38 +46,37 @@ router.post('/', async (req, res) => {
       backgroundCheck = true
     } = req.body;
 
+    const targetSpec = resolvePassportPhotoSpec({ country, size, dpi, background });
     const {
       countryCode,
       countryRequirement,
       pixelWidth,
-      pixelHeight,
-      backgroundColor: backgroundValue
-    } = resolvePassportPhotoSpec({ country, size, dpi, background });
+      pixelHeight
+    } = targetSpec;
+    const detection = await detectPrimaryFace(fileObj.buffer);
+    const crop = calculatePassportCrop({
+      imageWidth: detection.imageWidth,
+      imageHeight: detection.imageHeight,
+      face: detection.face,
+      targetSpec
+    });
 
-    let processor = sharp(fileObj.buffer);
-
-    // Apply enhancement if requested
+    let faceProcessor = sharp(fileObj.buffer).rotate().extract({
+      left: crop.left,
+      top: crop.top,
+      width: crop.width,
+      height: crop.height
+    });
     if (enhance === 'true' || enhance === true) {
-      processor = processor
+      faceProcessor = faceProcessor
         .sharpen({ sigma: 1, m1: 1, m2: 2 })
         .modulate({ brightness: 1.05, contrast: 1.1 });
-    }
-
-    // Advanced face detection and cropping
-    let faceProcessor;
-    try {
-      // Try to use more advanced face detection
-      faceProcessor = await detectAndCropFace(fileObj.buffer);
-    } catch (faceError) {
-      // Fallback to basic processing
-      console.log('Advanced face detection failed, using basic processing');
-      faceProcessor = sharp(fileObj.buffer);
     }
 
     // Resize to passport photo dimensions
     let processedBuffer = await faceProcessor
       .resize(pixelWidth, pixelHeight, { fit: 'cover', position: 'center' })
-      .flatten({ background: backgroundValue })
+      .flatten({ background: '#FFFFFF' })
       .jpeg({ quality: 95, mozjpeg: true })
       .toBuffer();
 
@@ -118,25 +101,17 @@ router.post('/', async (req, res) => {
 
         // Head position check (simulated)
         if (headPositionCheck) {
-          complianceStatus.details.headPosition = 'Centered';
-          // In a real implementation, this would use facial landmark detection
-          // For now, we'll assume it's correct since we're using face detection
+          complianceStatus.details.headPosition = '由真实人脸定位自动居中';
+          complianceStatus.details.faceConfidence = detection.face.confidence;
+          complianceStatus.details.cropMetrics = crop.metrics;
         }
 
-        // Lighting check (simulated)
         if (lightingCheck) {
-          complianceStatus.details.lighting = 'Good';
-          // In a real implementation, this would analyze brightness/contrast distribution
-          // For now, we'll assume it's good since we're enhancing the image
+          complianceStatus.details.lighting = '本版本未自动判定光线合规性';
         }
 
-        // Background check
         if (backgroundCheck) {
-          complianceStatus.details.background = backgroundValue === '#FFFFFF' ? 'Solid white' : 'Custom color';
-          if (backgroundValue !== '#FFFFFF') {
-            complianceStatus.issues.push('Non-standard background color may not be accepted');
-            complianceStatus.suggestions.push('Consider using pure white background (#FFFFFF) for official documents');
-          }
+          complianceStatus.details.background = '保留原始背景；V1 不提供自动换底';
         }
 
         // Country-specific compliance checks
@@ -182,7 +157,7 @@ router.post('/', async (req, res) => {
           width: canvasWidth,
           height: canvasHeight,
           channels: 3,
-          background: backgroundValue
+          background: '#FFFFFF'
         }
       })
         .composite(compositeArray)
@@ -195,13 +170,13 @@ router.post('/', async (req, res) => {
     // Add compliance status to response headers
     res.setHeader('Content-Type', 'image/jpeg');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('X-Compliance-Status', JSON.stringify(complianceStatus));
+    res.setHeader('X-Compliance-Status', encodeURIComponent(JSON.stringify(complianceStatus)));
 
     res.send(processedBuffer);
 
   } catch (error) {
     console.error('Advanced Passport Photo error:', error);
-    if (error instanceof PassportPhotoInputError) {
+    if (error instanceof PassportPhotoError) {
       return res.status(error.status).json({ error: error.code, message: error.message });
     }
     res.status(500).json({

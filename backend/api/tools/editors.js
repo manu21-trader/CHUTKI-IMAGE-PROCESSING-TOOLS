@@ -5,9 +5,11 @@ import express from 'express';
 import multer from 'multer';
 import sharp from 'sharp';
 import {
-  PassportPhotoInputError,
+  PassportPhotoError,
   resolvePassportPhotoSpec
 } from '../../utils/passportPhoto.js';
+import { calculatePassportCrop } from '../../utils/passportCrop.js';
+import { detectPrimaryFace } from '../../services/faceDetection.js';
 
 const router = express.Router();
 const upload = multer({
@@ -15,15 +17,6 @@ const upload = multer({
   limits: { fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => { file.mimetype.startsWith('image/') ? cb(null, true) : cb(new Error('Only images')); }
 });
-
-// ── Face detection helper (simple center-crop for passport) ──────────────────
-const detectAndCropFace = async (buffer) => {
-  const meta = await sharp(buffer).metadata();
-  const size = Math.min(meta.width, meta.height);
-  const left = Math.max(0, Math.floor((meta.width - size) / 2));
-  const top = Math.max(0, Math.floor((meta.height - size) / 3));
-  return sharp(buffer).extract({ left, top, width: size, height: size });
-};
 
 router.post('/:tool', async (req, res, next) => {
   try {
@@ -42,15 +35,28 @@ router.post('/:tool', async (req, res, next) => {
       // ── passport-photo ───────────────────────────────────────────────────────
       case 'passport-photo': {
         const { size = '2x2', dpi = 300, background = '#FFFFFF', quantity = 1, enhance = true, country = 'US', complianceCheck = true } = req.body;
-        const {
-          pixelWidth: pw,
-          pixelHeight: ph,
-          backgroundColor: bg
-        } = resolvePassportPhotoSpec({ country, size, dpi, background });
+        const targetSpec = resolvePassportPhotoSpec({ country, size, dpi, background });
+        const { pixelWidth: pw, pixelHeight: ph } = targetSpec;
+        const detection = await detectPrimaryFace(fileBuffer);
+        const crop = calculatePassportCrop({
+          imageWidth: detection.imageWidth,
+          imageHeight: detection.imageHeight,
+          face: detection.face,
+          targetSpec
+        });
 
-        let proc = await detectAndCropFace(fileBuffer);
+        let proc = sharp(fileBuffer).rotate().extract({
+          left: crop.left,
+          top: crop.top,
+          width: crop.width,
+          height: crop.height
+        });
         if (enhance === 'true' || enhance === true) proc = proc.sharpen({ sigma: 1, m1: 1, m2: 2 }).modulate({ brightness: 1.05, contrast: 1.1 });
-        processedBuffer = await proc.resize(pw, ph, { fit: 'cover', position: 'center' }).flatten({ background: bg }).jpeg({ quality: 95, mozjpeg: true }).toBuffer();
+        processedBuffer = await proc
+          .resize(pw, ph, { fit: 'cover', position: 'center' })
+          .flatten({ background: '#FFFFFF' })
+          .jpeg({ quality: 95, mozjpeg: true })
+          .toBuffer();
 
         if (parseInt(quantity) > 1) {
           const perRow = Math.ceil(Math.sqrt(parseInt(quantity)));
@@ -435,7 +441,7 @@ router.post('/:tool', async (req, res, next) => {
     setImmediate(() => { processedBuffer = null; if (global.gc) global.gc(); });
   } catch (error) {
     console.error(`[EDITORS] ${req.params.tool} error:`, error.message);
-    if (error instanceof PassportPhotoInputError) {
+    if (error instanceof PassportPhotoError) {
       return res.status(error.status).json({ error: error.code, message: error.message });
     }
     res.status(500).json({ error: 'Edit failed: ' + error.message });

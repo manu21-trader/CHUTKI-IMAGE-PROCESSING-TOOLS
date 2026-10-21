@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import config from '../../config';
@@ -7,8 +7,6 @@ import passportCountries from '../../data/passportCountries';
 import { useAuth } from '../../context/AuthContext';
 import { useUsage } from '../../context/UsageContext';
 import { getProcessingErrorMessage } from '../../utils/quotaError';
-
-const FACE_DETECTION_AVAILABLE = false;
 
 const PassportPhotoTool = () => {
   const navigate = useNavigate();
@@ -26,19 +24,8 @@ const PassportPhotoTool = () => {
     quantity: '1',
     paperSize: '4x6',
     enhance: true,
-    country: 'US',
-    complianceCheck: true,
-    headPositionCheck: true,
-    lightingCheck: true,
-    backgroundCheck: true
+    country: 'US'
   });
-  
-  // Face detection state
-  const [faceDetection, setFaceDetection] = useState(null);
-  const [detectingFace, setDetectingFace] = useState(false);
-  const [complianceResults, setComplianceResults] = useState(null);
-  const imageRef = useRef(null);
-
   // Auto-update settings when country changes
   useEffect(() => {
     const countryData = passportCountries[formData.country];
@@ -81,114 +68,6 @@ const PassportPhotoTool = () => {
       setFile(null);
       setPreview(null);
       setFileInfo(null);
-      setFaceDetection(null);
-      setComplianceResults(null);
-    }
-  };
-
-  // Handle face detection
-  const handleDetectFace = () => {
-    toast.error('人脸检测功能暂未开放。');
-  };
-
-  // Handle auto-centering
-  const handleAutoCenter = async () => {
-    if (!faceDetection || !faceDetection.success) {
-      toast.error('请先进行人脸检测。');
-      return;
-    }
-
-    if (!preview) {
-      toast.error('没有可居中的图片。');
-      return;
-    }
-
-    setLoading(true);
-    toast.loading('正在自动居中人脸...', { id: 'auto-center' });
-
-    try {
-      // Create canvas to manipulate image
-      const img = new Image();
-      img.src = preview;
-      
-      await new Promise((resolve) => {
-        img.onload = resolve;
-      });
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
-      // Get country requirements
-      const countryReqs = passportCountries[formData.country];
-      const targetHeadSize = countryReqs?.headSize?.percentage || 70;
-      const targetEyeLevel = countryReqs?.eyeLevel?.percentage || 60;
-
-      // Calculate current face metrics
-      const face = faceDetection.box;
-      const currentHeadSize = (face.height / img.height) * 100;
-      const currentEyeLevel = faceDetection.eyeLevel 
-        ? ((faceDetection.eyeLevel.y / img.height) * 100)
-        : ((face.y + face.height * 0.3) / img.height) * 100;
-
-      // Calculate scale factor to match target head size
-      const scaleFactor = targetHeadSize / currentHeadSize;
-      
-      // Calculate new dimensions
-      const newWidth = img.width * scaleFactor;
-      const newHeight = img.height * scaleFactor;
-      
-      // Calculate face center after scaling
-      const scaledFaceX = face.x * scaleFactor + (face.width * scaleFactor) / 2;
-      const scaledFaceY = face.y * scaleFactor + (face.height * scaleFactor) / 2;
-      
-      // Calculate target position (center horizontally, eye level at target percentage)
-      const targetX = img.width / 2;
-      const targetY = (img.height * targetEyeLevel) / 100;
-      
-      // Calculate offset needed
-      const offsetX = targetX - scaledFaceX;
-      const offsetY = targetY - scaledFaceY;
-
-      // Set canvas to original image size
-      canvas.width = img.width;
-      canvas.height = img.height;
-
-      // Fill with background color
-      ctx.fillStyle = formData.background;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Draw scaled and centered image
-      ctx.drawImage(
-        img,
-        offsetX,
-        offsetY,
-        newWidth,
-        newHeight
-      );
-
-      // Convert to blob and create new file
-      canvas.toBlob((blob) => {
-        const centeredFile = new File([blob], file.name, { type: file.type });
-        setFile(centeredFile);
-        
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setPreview(reader.result);
-          toast.success('✅ 人脸已自动居中！', { id: 'auto-center' });
-          
-          // Re-detect face to update overlay
-          setTimeout(() => {
-            handleDetectFace();
-          }, 500);
-        };
-        reader.readAsDataURL(centeredFile);
-      }, file.type);
-
-    } catch (error) {
-      console.error('Auto-center error:', error);
-      toast.error('自动居中失败，请稍后重试。', { id: 'auto-center' });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -225,7 +104,10 @@ const PassportPhotoTool = () => {
         try {
           const complianceHeader = response.headers.get('X-Compliance-Status');
           if (complianceHeader) {
-            complianceStatus = JSON.parse(complianceHeader);
+            const decodedHeader = complianceHeader.startsWith('%')
+              ? decodeURIComponent(complianceHeader)
+              : complianceHeader;
+            complianceStatus = JSON.parse(decodedHeader);
           }
         } catch (parseError) {
           console.log('Failed to parse compliance status');
@@ -343,99 +225,6 @@ const PassportPhotoTool = () => {
                 </div>
               )}
 
-              {/* AI Face Detection Button */}
-              {FACE_DETECTION_AVAILABLE && file && (
-                <div className="space-y-3">
-                  <button
-                    type="button"
-                    onClick={handleDetectFace}
-                    disabled={detectingFace || loading}
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 px-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105 active:scale-95 shadow-lg flex items-center justify-center"
-                  >
-                    {detectingFace ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        正在检测人脸...
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        🤖 AI 人脸检测
-                      </>
-                    )}
-                  </button>
-
-                  {/* Auto-Center Button */}
-                  {faceDetection && faceDetection.success && (
-                    <button
-                      type="button"
-                      onClick={handleAutoCenter}
-                      disabled={loading || detectingFace}
-                      className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold py-3 px-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105 active:scale-95 shadow-lg flex items-center justify-center"
-                    >
-                      {loading ? (
-                        <>
-                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          正在自动居中...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                          </svg>
-                          🎯 自动居中人脸
-                        </>
-                      )}
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Face Detection Results */}
-              {faceDetection && faceDetection.success && (
-                <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg border border-green-200 dark:border-green-800">
-                  <h3 className="font-medium text-green-800 dark:text-green-200 mb-2 flex items-center">
-                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    已成功检测到人脸！
-                  </h3>
-                  <div className="text-sm text-green-700 dark:text-green-300 space-y-1">
-                    <p><span className="font-medium">置信度：</span> {(faceDetection.confidence * 100).toFixed(1)}%</p>
-                    <p><span className="font-medium">人脸大小：</span> {faceDetection.box.width}×{faceDetection.box.height}px</p>
-                    <p><span className="font-medium">眼睛高度：</span> {faceDetection.eyeLevel.toFixed(0)}px</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Compliance Results */}
-              {complianceResults && (
-                <div className={`p-4 rounded-lg border ${complianceResults.overall ? 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800' : 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800'}`}>
-                  <h3 className={`font-medium mb-2 flex items-center ${complianceResults.overall ? 'text-green-800 dark:text-green-200' : 'text-yellow-800 dark:text-yellow-200'}`}>
-                    {complianceResults.overall ? '✅ 合规检查：通过' : '⚠️ 合规检查：发现问题'}
-                  </h3>
-                  <div className={`text-sm space-y-2 ${complianceResults.overall ? 'text-green-700 dark:text-green-300' : 'text-yellow-700 dark:text-yellow-300'}`}>
-                    {Object.entries(complianceResults.checks).map(([key, check]) => (
-                      <div key={key} className="flex items-start">
-                        <span className="mr-2">{check.passed ? '✅' : '❌'}</span>
-                        <div>
-                          <p className="font-medium capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
-                          <p className="text-xs">{check.message}（当前值：{check.value}，要求：{check.expected}）</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
               {/* Country Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -472,9 +261,9 @@ const PassportPhotoTool = () => {
                           <span>{passportCountries[formData.country].size.width} × {passportCountries[formData.country].size.height} {passportCountries[formData.country].size.unit === 'inches' ? '英寸' : passportCountries[formData.country].size.unit}</span>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <span className="font-medium">🎨 背景：</span>
+                          <span className="font-medium">🎨 建议背景：</span>
                           <span className="inline-block w-4 h-4 rounded border border-gray-300" style={{backgroundColor: passportCountries[formData.country].background}}></span>
-                          <span>{passportCountries[formData.country].background === '#FFFFFF' ? '白色' : passportCountries[formData.country].background === '#F0F0F0' ? '浅灰色' : '自定义'}</span>
+                          <span>{passportCountries[formData.country].background === '#FFFFFF' ? '白色（请拍摄时准备）' : '浅色（请拍摄时准备）'}</span>
                         </div>
                         <div className="flex items-center space-x-2">
                           <span className="font-medium">🎯 DPI：</span>
@@ -531,30 +320,9 @@ const PassportPhotoTool = () => {
               </div>
 
               {/* Background Color */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  背景颜色
-                </label>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="color"
-                    value={formData.background}
-                    onChange={(e) => setFormData({...formData, background: e.target.value})}
-                    className="w-12 h-12 border-0 rounded cursor-pointer"
-                  />
-                  <select
-                    value={formData.background}
-                    onChange={(e) => setFormData({...formData, background: e.target.value})}
-                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  >
-                    <option value="#FFFFFF">白色</option>
-                    <option value="#000000">黑色</option>
-                    <option value="#0000FF">蓝色</option>
-                    <option value="#FF0000">红色</option>
-                    <option value="#00FF00">绿色</option>
-                    <option value="#FFFF00">黄色</option>
-                  </select>
-                </div>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                <p className="font-medium">背景说明</p>
+                <p className="mt-1">自动换背景功能开发中。本版本只进行真实人脸定位和证件照构图，会保留原照片背景，请上传已经使用合适纯色背景拍摄的照片。</p>
               </div>
 
               {/* Quantity */}
@@ -603,65 +371,9 @@ const PassportPhotoTool = () => {
                 </label>
               </div>
               
-              {/* Compliance Check */}
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="complianceCheck"
-                  checked={formData.complianceCheck}
-                  onChange={(e) => setFormData({...formData, complianceCheck: e.target.checked})}
-                  className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                />
-                <label htmlFor="complianceCheck" className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                  启用合规检查
-                </label>
+              <div className="rounded-lg bg-indigo-50 p-4 text-sm text-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-200">
+                系统会检测单个主要人脸，并按照所选国家或地区的头部比例和眼睛高度自动构图。V1 暂不判断光线或背景是否符合官方要求。
               </div>
-              
-              {/* Advanced Compliance Checks */}
-              {formData.complianceCheck && (
-                <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-lg space-y-3">
-                  <h3 className="font-medium text-indigo-800 dark:text-indigo-200">高级合规检查</h3>
-                  
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="headPositionCheck"
-                      checked={formData.headPositionCheck}
-                      onChange={(e) => setFormData({...formData, headPositionCheck: e.target.checked})}
-                      className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                    />
-                    <label htmlFor="headPositionCheck" className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                      头部位置分析
-                    </label>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="lightingCheck"
-                      checked={formData.lightingCheck}
-                      onChange={(e) => setFormData({...formData, lightingCheck: e.target.checked})}
-                      className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                    />
-                    <label htmlFor="lightingCheck" className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                      光线质量检查
-                    </label>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="backgroundCheck"
-                      checked={formData.backgroundCheck}
-                      onChange={(e) => setFormData({...formData, backgroundCheck: e.target.checked})}
-                      className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                    />
-                    <label htmlFor="backgroundCheck" className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">
-                      背景颜色校验
-                    </label>
-                  </div>
-                </div>
-              )}
 
               {/* Submit Button */}
               <button

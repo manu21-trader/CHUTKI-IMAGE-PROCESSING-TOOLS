@@ -1,14 +1,14 @@
 export const PASSPORT_COUNTRY_REQUIREMENTS = Object.freeze({
-  US: Object.freeze({ width: 2, height: 2, unit: 'in', backgroundColor: '#FFFFFF', headSizeMin: 1, headSizeMax: 1.375 }),
-  GB: Object.freeze({ width: 35, height: 45, unit: 'mm', backgroundColor: '#F5F5F5', headSizeMin: 29, headSizeMax: 34 }),
-  CA: Object.freeze({ width: 50, height: 70, unit: 'mm', backgroundColor: '#FFFFFF', headSizeMin: 31, headSizeMax: 36 }),
-  IN: Object.freeze({ width: 35, height: 45, unit: 'mm', backgroundColor: '#FFFFFF', headSizeMin: 25, headSizeMax: 35 }),
-  AU: Object.freeze({ width: 35, height: 45, unit: 'mm', backgroundColor: '#F5F5F5', headSizeMin: 32, headSizeMax: 36 }),
-  DE: Object.freeze({ width: 35, height: 45, unit: 'mm', backgroundColor: '#F5F5F5', headSizeMin: 32, headSizeMax: 36 }),
-  FR: Object.freeze({ width: 35, height: 45, unit: 'mm', backgroundColor: '#F5F5F5', headSizeMin: 32, headSizeMax: 36 }),
-  JP: Object.freeze({ width: 35, height: 45, unit: 'mm', backgroundColor: '#FFFFFF', headSizeMin: 32, headSizeMax: 36 }),
-  CN: Object.freeze({ width: 33, height: 48, unit: 'mm', backgroundColor: '#FFFFFF', headSizeMin: 28, headSizeMax: 33 }),
-  BR: Object.freeze({ width: 50, height: 70, unit: 'mm', backgroundColor: '#FFFFFF', headSizeMin: 32, headSizeMax: 36 })
+  US: Object.freeze({ width: 2, height: 2, unit: 'in', backgroundColor: '#FFFFFF', headSizeMin: 1, headSizeMax: 1.375, headSizePercentage: 70, eyeLevelPercentage: 60 }),
+  GB: Object.freeze({ width: 35, height: 45, unit: 'mm', backgroundColor: '#F5F5F5', headSizeMin: 29, headSizeMax: 34, headSizePercentage: 80, eyeLevelPercentage: 50 }),
+  CA: Object.freeze({ width: 50, height: 70, unit: 'mm', backgroundColor: '#FFFFFF', headSizeMin: 31, headSizeMax: 36, headSizePercentage: 70, eyeLevelPercentage: 60 }),
+  IN: Object.freeze({ width: 35, height: 45, unit: 'mm', backgroundColor: '#FFFFFF', headSizeMin: 25, headSizeMax: 35, headSizePercentage: 70, eyeLevelPercentage: 60 }),
+  AU: Object.freeze({ width: 35, height: 45, unit: 'mm', backgroundColor: '#F5F5F5', headSizeMin: 32, headSizeMax: 36, headSizePercentage: 75, eyeLevelPercentage: 55 }),
+  DE: Object.freeze({ width: 35, height: 45, unit: 'mm', backgroundColor: '#F5F5F5', headSizeMin: 32, headSizeMax: 36, headSizePercentage: 75, eyeLevelPercentage: 55 }),
+  FR: Object.freeze({ width: 35, height: 45, unit: 'mm', backgroundColor: '#F5F5F5', headSizeMin: 32, headSizeMax: 36, headSizePercentage: 75, eyeLevelPercentage: 55 }),
+  JP: Object.freeze({ width: 35, height: 45, unit: 'mm', backgroundColor: '#FFFFFF', headSizeMin: 32, headSizeMax: 36, headSizePercentage: 75, eyeLevelPercentage: 55 }),
+  CN: Object.freeze({ width: 33, height: 48, unit: 'mm', backgroundColor: '#FFFFFF', headSizeMin: 28, headSizeMax: 33, headSizePercentage: 70, eyeLevelPercentage: 60 }),
+  BR: Object.freeze({ width: 50, height: 70, unit: 'mm', backgroundColor: '#FFFFFF', headSizeMin: 32, headSizeMax: 36, headSizePercentage: 70, eyeLevelPercentage: 60 })
 });
 
 const LEGACY_COUNTRY_CODES = Object.freeze({
@@ -35,12 +35,19 @@ const UNIT_ALIASES = Object.freeze({
   inches: 'in'
 });
 
-export class PassportPhotoInputError extends Error {
-  constructor(message) {
+export class PassportPhotoError extends Error {
+  constructor(code, message, status = 422) {
     super(message);
+    this.name = 'PassportPhotoError';
+    this.code = code;
+    this.status = status;
+  }
+}
+
+export class PassportPhotoInputError extends PassportPhotoError {
+  constructor(message) {
+    super('invalid_passport_dimensions', message, 422);
     this.name = 'PassportPhotoInputError';
-    this.code = 'invalid_passport_dimensions';
-    this.status = 422;
   }
 }
 

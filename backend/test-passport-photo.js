@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -12,6 +13,8 @@ import {
   PASSPORT_COUNTRY_REQUIREMENTS,
   resolvePassportPhotoSpec
 } from './utils/passportPhoto.js';
+
+const require = createRequire(import.meta.url);
 
 const getAvailablePort = () => new Promise((resolve, reject) => {
   const socket = net.createServer();
@@ -146,9 +149,19 @@ try {
     }
   );
 
+  const humanDist = path.dirname(require.resolve('@vladmandic/human'));
+  const sampleImage = path.join(path.dirname(humanDist), 'assets', 'screenshot-faceid.jpg');
+  const testHeadshot = await sharp(sampleImage)
+    .extract({ left: 15, top: 142, width: 140, height: 140 })
+    .resize(360, 360)
+    .jpeg({ quality: 92 })
+    .toBuffer();
   const sourceImage = await sharp({
-    create: { width: 1206, height: 2622, channels: 3, background: '#d7b899' }
-  }).jpeg({ quality: 88 }).toBuffer();
+    create: { width: 1206, height: 2622, channels: 3, background: '#d8d8d8' }
+  })
+    .composite([{ input: testHeadshot, left: 423, top: 400 }])
+    .jpeg({ quality: 88 })
+    .toBuffer();
   const sourceMetadata = await sharp(sourceImage).metadata();
   assert.equal(sourceMetadata.width, 1206);
   assert.equal(sourceMetadata.height, 2622);
@@ -185,6 +198,28 @@ try {
   assert.equal(fallbackMetadata.width, 390);
   assert.equal(fallbackMetadata.height, 567);
 
+  const noFaceImage = await sharp({
+    create: { width: 1206, height: 2622, channels: 3, background: '#d8d8d8' }
+  }).jpeg({ quality: 88 }).toBuffer();
+  const usageBeforeNoFace = await fetch(`${baseUrl}/api/usage/me`, {
+    headers: { Authorization: `Bearer ${registration.token}` }
+  }).then(response => response.json());
+  const noFaceResponse = await processPassportPhoto(
+    baseUrl,
+    'passport-photo',
+    registration.token,
+    noFaceImage,
+    { country: 'CN', size: '33x48mm' }
+  );
+  assert.equal(noFaceResponse.status, 422);
+  const noFaceBody = await noFaceResponse.json();
+  assert.equal(noFaceBody.error, 'face_not_detected');
+  assert.match(noFaceBody.message, /未检测到清晰人脸/);
+  const usageAfterNoFace = await fetch(`${baseUrl}/api/usage/me`, {
+    headers: { Authorization: `Bearer ${registration.token}` }
+  }).then(response => response.json());
+  assert.equal(usageAfterNoFace.used, usageBeforeNoFace.used, 'No-face failures must roll back quota');
+
   const invalidResponse = await processPassportPhoto(
     baseUrl,
     'passport-photo',
@@ -200,6 +235,8 @@ try {
   console.log('PASS CN, GB, CA and US dimensions use correct mm/inches conversion');
   console.log('PASS passport-photo and passport-photo-advanced return 200 for 1206x2622 JPEG');
   console.log('PASS 33x48mm fallback parses units without NaN');
+  console.log('PASS no-face image returns a specific Chinese 422 response');
+  console.log('PASS failed face detection does not consume quota');
   console.log('PASS invalid dimensions return a specific Chinese 422 message');
 } catch (error) {
   console.error(output);
