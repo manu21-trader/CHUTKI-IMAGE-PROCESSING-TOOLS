@@ -7,8 +7,7 @@ import {
   PassportPhotoError,
   resolvePassportPhotoSpec
 } from '../../utils/passportPhoto.js';
-import { calculatePassportCrop } from '../../utils/passportCrop.js';
-import { detectPrimaryFace } from '../../services/faceDetection.js';
+import { processPassportPortrait } from '../../services/passportPhotoProcessor.js';
 
 const router = express.Router();
 
@@ -53,32 +52,14 @@ router.post('/', async (req, res) => {
       pixelWidth,
       pixelHeight
     } = targetSpec;
-    const detection = await detectPrimaryFace(fileObj.buffer);
-    const crop = calculatePassportCrop({
-      imageWidth: detection.imageWidth,
-      imageHeight: detection.imageHeight,
-      face: detection.face,
-      targetSpec
+    const portrait = await processPassportPortrait({
+      buffer: fileObj.buffer,
+      targetSpec,
+      background,
+      enhance
     });
-
-    let faceProcessor = sharp(fileObj.buffer).rotate().extract({
-      left: crop.left,
-      top: crop.top,
-      width: crop.width,
-      height: crop.height
-    });
-    if (enhance === 'true' || enhance === true) {
-      faceProcessor = faceProcessor
-        .sharpen({ sigma: 1, m1: 1, m2: 2 })
-        .modulate({ brightness: 1.05, contrast: 1.1 });
-    }
-
-    // Resize to passport photo dimensions
-    let processedBuffer = await faceProcessor
-      .resize(pixelWidth, pixelHeight, { fit: 'cover', position: 'center' })
-      .flatten({ background: '#FFFFFF' })
-      .jpeg({ quality: 95, mozjpeg: true })
-      .toBuffer();
+    const { detection, crop } = portrait;
+    let processedBuffer = portrait.buffer;
 
     // Compliance check simulation
     let complianceStatus = {
@@ -111,7 +92,9 @@ router.post('/', async (req, res) => {
         }
 
         if (backgroundCheck) {
-          complianceStatus.details.background = '保留原始背景；V1 不提供自动换底';
+          complianceStatus.details.background = portrait.backgroundPreset.mode === 'original'
+            ? '保留原始背景'
+            : `已使用本地人物分割并合成${portrait.backgroundPreset.label}`;
         }
 
         // Country-specific compliance checks

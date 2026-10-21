@@ -40,7 +40,7 @@ const waitForDatabase = async (baseUrl, serverLogs) => {
   throw new Error(`Backend did not connect to the test database.\n${serverLogs()}`);
 };
 
-const createPassportForm = (buffer, { country, size }) => {
+const createPassportForm = (buffer, { country, size, background = 'original' }) => {
   const form = new FormData();
   form.append('file', new Blob([buffer], { type: 'image/jpeg' }), 'wechat-photo.jpg');
   form.append('country', country);
@@ -48,6 +48,7 @@ const createPassportForm = (buffer, { country, size }) => {
   form.append('dpi', '300');
   form.append('quantity', '1');
   form.append('enhance', 'false');
+  form.append('background', background);
   return form;
 };
 
@@ -198,6 +199,39 @@ try {
   assert.equal(fallbackMetadata.width, 390);
   assert.equal(fallbackMetadata.height, 567);
 
+  const segmentationSample = path.join(path.dirname(humanDist), 'assets', 'screenshot-vrm.jpg');
+  const segmentationSource = await sharp(segmentationSample)
+    .extract({ left: 473, top: 3, width: 325, height: 245 })
+    .resize(975, 735)
+    .jpeg({ quality: 92 })
+    .toBuffer();
+  const blueBackgroundResponse = await processPassportPhoto(
+    baseUrl,
+    'passport-photo',
+    registration.token,
+    segmentationSource,
+    { country: 'CN', size: '33x48mm', background: '#438EDB' }
+  );
+  if (blueBackgroundResponse.status !== 200) {
+    const errorBody = await blueBackgroundResponse.text();
+    assert.equal(blueBackgroundResponse.status, 200, `Real segmentation failed: ${errorBody}`);
+  }
+  const blueResult = Buffer.from(await blueBackgroundResponse.arrayBuffer());
+  const { data: bluePixels, info: blueInfo } = await sharp(blueResult)
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const expectedBlue = [0x43, 0x8E, 0xDB];
+  const cornerOffsets = [0, (blueInfo.width - 1) * 3];
+  for (const offset of cornerOffsets) {
+    for (let channel = 0; channel < 3; channel += 1) {
+      assert.ok(
+        Math.abs(bluePixels[offset + channel] - expectedBlue[channel]) <= 20,
+        `Real segmentation corner background channel ${channel}`
+      );
+    }
+  }
+
   const noFaceImage = await sharp({
     create: { width: 1206, height: 2622, channels: 3, background: '#d8d8d8' }
   }).jpeg({ quality: 88 }).toBuffer();
@@ -235,6 +269,7 @@ try {
   console.log('PASS CN, GB, CA and US dimensions use correct mm/inches conversion');
   console.log('PASS passport-photo and passport-photo-advanced return 200 for 1206x2622 JPEG');
   console.log('PASS 33x48mm fallback parses units without NaN');
+  console.log('PASS real local segmentation produces the selected blue background');
   console.log('PASS no-face image returns a specific Chinese 422 response');
   console.log('PASS failed face detection does not consume quota');
   console.log('PASS invalid dimensions return a specific Chinese 422 message');

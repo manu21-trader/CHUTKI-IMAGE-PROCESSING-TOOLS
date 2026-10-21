@@ -8,8 +8,7 @@ import {
   PassportPhotoError,
   resolvePassportPhotoSpec
 } from '../../utils/passportPhoto.js';
-import { calculatePassportCrop } from '../../utils/passportCrop.js';
-import { detectPrimaryFace } from '../../services/faceDetection.js';
+import { processPassportPortrait } from '../../services/passportPhotoProcessor.js';
 
 const router = express.Router();
 const upload = multer({
@@ -37,26 +36,13 @@ router.post('/:tool', async (req, res, next) => {
         const { size = '2x2', dpi = 300, background = '#FFFFFF', quantity = 1, enhance = true, country = 'US', complianceCheck = true } = req.body;
         const targetSpec = resolvePassportPhotoSpec({ country, size, dpi, background });
         const { pixelWidth: pw, pixelHeight: ph } = targetSpec;
-        const detection = await detectPrimaryFace(fileBuffer);
-        const crop = calculatePassportCrop({
-          imageWidth: detection.imageWidth,
-          imageHeight: detection.imageHeight,
-          face: detection.face,
-          targetSpec
+        const portrait = await processPassportPortrait({
+          buffer: fileBuffer,
+          targetSpec,
+          background,
+          enhance
         });
-
-        let proc = sharp(fileBuffer).rotate().extract({
-          left: crop.left,
-          top: crop.top,
-          width: crop.width,
-          height: crop.height
-        });
-        if (enhance === 'true' || enhance === true) proc = proc.sharpen({ sigma: 1, m1: 1, m2: 2 }).modulate({ brightness: 1.05, contrast: 1.1 });
-        processedBuffer = await proc
-          .resize(pw, ph, { fit: 'cover', position: 'center' })
-          .flatten({ background: '#FFFFFF' })
-          .jpeg({ quality: 95, mozjpeg: true })
-          .toBuffer();
+        processedBuffer = portrait.buffer;
 
         if (parseInt(quantity) > 1) {
           const perRow = Math.ceil(Math.sqrt(parseInt(quantity)));

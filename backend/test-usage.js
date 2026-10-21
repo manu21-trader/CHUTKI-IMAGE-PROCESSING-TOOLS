@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -13,6 +14,8 @@ import {
   METERED_HIGH_COST,
   HIDDEN_UNSTABLE
 } from '../shared/toolAccessPolicy.js';
+
+const require = createRequire(import.meta.url);
 
 const getAvailablePort = () => new Promise((resolve, reject) => {
   const socket = net.createServer();
@@ -45,20 +48,20 @@ const requestJson = async (url, options) => {
 };
 
 let validImageBuffer;
-const createImageForm = (valid = true, fields = {}) => {
+const createImageForm = (valid = true, fields = {}, sourceBuffer = validImageBuffer) => {
   const form = new FormData();
-  const buffer = validImageBuffer && valid ? validImageBuffer : Buffer.from('not-an-image');
+  const buffer = sourceBuffer && valid ? sourceBuffer : Buffer.from('not-an-image');
   form.append('image', new Blob([buffer], { type: 'image/png' }), 'source.png');
   Object.entries(fields).forEach(([key, value]) => form.append(key, String(value)));
   return form;
 };
 
 const processImage = (baseUrl, tool, token, options = {}) => {
-  const { valid = true, fields = {}, headers = {} } = options;
+  const { valid = true, fields = {}, headers = {}, buffer } = options;
   return fetch(`${baseUrl}/api/tools/${tool}`, {
     method: 'POST',
     headers: token ? { ...headers, Authorization: `Bearer ${token}` } : headers,
-    body: createImageForm(valid, fields)
+    body: createImageForm(valid, fields, buffer || validImageBuffer)
   });
 };
 
@@ -289,16 +292,33 @@ try {
   assert.equal(proUsage.body.plan, 'pro');
   assert.equal(proUsage.body.limit, 500);
 
+  const humanDist = path.dirname(require.resolve('@vladmandic/human'));
+  const faceSample = path.join(path.dirname(humanDist), 'assets', 'screenshot-faceid.jpg');
+  const testHeadshot = await sharp(faceSample)
+    .extract({ left: 15, top: 142, width: 140, height: 140 })
+    .resize(360, 360)
+    .jpeg({ quality: 92 })
+    .toBuffer();
+  const passportSource = await sharp({
+    create: { width: 1206, height: 2622, channels: 3, background: '#d8d8d8' }
+  })
+    .composite([{ input: testHeadshot, left: 423, top: 400 }])
+    .jpeg({ quality: 88 })
+    .toBuffer();
+
   // Exercise every mounted processing category with valid images.
   const categoryRequests = [
-    ['reduce-size-kb', { targetKB: 10 }],
-    ['jpg-to-pdf-50kb', {}],
-    ['super-resolution', { scale: 2 }],
-    ['remove-background', {}],
-    ['passport-photo-advanced', { size: '2x2', dpi: 72 }]
+    ['reduce-size-kb', { fields: { targetKB: 10 } }],
+    ['jpg-to-pdf-50kb', { fields: {} }],
+    ['super-resolution', { fields: { scale: 2 } }],
+    ['remove-background', { fields: {} }],
+    ['passport-photo-advanced', {
+      fields: { country: 'US', size: '2x2in', dpi: 72, background: 'original' },
+      buffer: passportSource
+    }]
   ];
-  for (const [tool, fields] of categoryRequests) {
-    const response = await processImage(baseUrl, tool, proRegistration.body.token, { fields });
+  for (const [tool, options] of categoryRequests) {
+    const response = await processImage(baseUrl, tool, proRegistration.body.token, options);
     assert.equal(response.status, 200, `${tool} should still process a valid image`);
   }
   const proUsageAfter = await getUsage(baseUrl, proRegistration.body.token);

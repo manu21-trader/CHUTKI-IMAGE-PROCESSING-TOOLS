@@ -8,6 +8,13 @@ import { useAuth } from '../../context/AuthContext';
 import { useUsage } from '../../context/UsageContext';
 import { getProcessingErrorMessage } from '../../utils/quotaError';
 
+const backgroundOptions = [
+  { value: 'original', label: '保留原背景', color: null },
+  { value: '#FFFFFF', label: '白底', color: '#FFFFFF' },
+  { value: '#438EDB', label: '蓝底', color: '#438EDB' },
+  { value: '#D64545', label: '红底', color: '#D64545' }
+];
+
 const PassportPhotoTool = () => {
   const navigate = useNavigate();
   const { token } = useAuth();
@@ -34,15 +41,13 @@ const PassportPhotoTool = () => {
         ? `${countryData.size.width}x${countryData.size.height}` 
         : `${countryData.size.width}x${countryData.size.height}mm`;
       const newDpi = countryData.dpi.toString();
-      const newBackground = countryData.background;
       
       // Only update if values actually changed
-      if (formData.size !== newSize || formData.dpi !== newDpi || formData.background !== newBackground) {
+      if (formData.size !== newSize || formData.dpi !== newDpi) {
         setFormData(prev => ({
           ...prev,
           size: newSize,
-          dpi: newDpi,
-          background: newBackground
+          dpi: newDpi
         }));
       }
     }
@@ -187,7 +192,7 @@ const PassportPhotoTool = () => {
             返回工具列表
           </button>
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">高级证件照制作</h1>
-          <p className="text-gray-600 dark:text-gray-400 text-lg">支持人脸检测、自动居中和画质增强的证件照工具</p>
+          <p className="text-gray-600 dark:text-gray-400 text-lg">支持真实人脸定位、自动构图和本地人物分割换背景</p>
           <span className="inline-block mt-3 px-4 py-1.5 bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded-full text-sm font-medium">
             图片编辑
           </span>
@@ -320,9 +325,38 @@ const PassportPhotoTool = () => {
               </div>
 
               {/* Background Color */}
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
-                <p className="font-medium">背景说明</p>
-                <p className="mt-1">自动换背景功能开发中。本版本只进行真实人脸定位和证件照构图，会保留原照片背景，请上传已经使用合适纯色背景拍摄的照片。</p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  输出背景
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {backgroundOptions.map(option => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, background: option.value })}
+                      className={`flex items-center rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
+                        formData.background === option.value
+                          ? 'border-indigo-500 bg-indigo-50 text-indigo-800 ring-2 ring-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-200'
+                          : 'border-gray-300 bg-white text-gray-700 hover:border-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200'
+                      }`}
+                      aria-pressed={formData.background === option.value}
+                    >
+                      {option.color ? (
+                        <span
+                          className="mr-3 h-6 w-6 flex-none rounded-full border border-gray-300 shadow-inner"
+                          style={{ backgroundColor: option.color }}
+                        />
+                      ) : (
+                        <span className="mr-3 flex h-6 w-6 flex-none items-center justify-center rounded-full border border-gray-300 text-xs">原</span>
+                      )}
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                  背景颜色要求因证件或机构而异，请以实际要求为准。蓝色和红色为统一预设色，不代表所有机构的官方标准。
+                </p>
               </div>
 
               {/* Quantity */}
@@ -372,7 +406,7 @@ const PassportPhotoTool = () => {
               </div>
               
               <div className="rounded-lg bg-indigo-50 p-4 text-sm text-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-200">
-                系统会检测单个主要人脸，并按照所选国家或地区的头部比例和眼睛高度自动构图。V1 暂不判断光线或背景是否符合官方要求。
+                系统会检测单个主要人脸，按照所选国家或地区的头部比例自动构图，并在选择纯色背景时进行人物分割。生成结果不代表必然通过政府、考试或其他机构审核。
               </div>
 
               {/* Submit Button */}
@@ -387,7 +421,7 @@ const PassportPhotoTool = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    正在生成...
+                    正在识别人像并生成证件照…
                   </span>
                 ) : '生成证件照'}
               </button>
@@ -482,7 +516,7 @@ const PassportPhotoTool = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <p className="text-gray-600 dark:text-gray-300 font-medium">正在生成证件照...</p>
+                    <p className="text-gray-600 dark:text-gray-300 font-medium">正在识别人像并生成证件照…</p>
                   </>
                 ) : (
                   <>
