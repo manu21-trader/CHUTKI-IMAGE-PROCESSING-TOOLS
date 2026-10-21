@@ -116,7 +116,89 @@ await assert.rejects(
   error => error.status === 422 && /人物分割/.test(error.message)
 );
 
+const closeSource = await sharp({
+  create: { width: 650, height: 900, channels: 3, background: '#1E7A4C' }
+}).jpeg({ quality: 100 }).toBuffer();
+const closeDetection = {
+  imageWidth: 650,
+  imageHeight: 900,
+  face: {
+    box: { x: 125, y: 120, width: 400, height: 500 },
+    center: { x: 325, y: 370 },
+    eyeCenter: { x: 325, y: 330 },
+    confidence: 0.99
+  }
+};
+const closeMask = Buffer.alloc(130 * 180);
+for (let y = 6; y < 171; y += 1) {
+  for (let x = 10; x < 120; x += 1) closeMask[y * 130 + x] = 255;
+}
+const closeSegmenter = async () => ({ mask: closeMask, width: 130, height: 180 });
+const closeSpec = resolvePassportPhotoSpec({ country: 'CN', dpi: 300 });
+
+for (const background of ['#FFFFFF', '#438EDB', '#D64545']) {
+  const adaptiveResult = await processPassportPortrait({
+    buffer: closeSource,
+    targetSpec: closeSpec,
+    background,
+    enhance: false,
+    faceDetector: async () => closeDetection,
+    personSegmenter: closeSegmenter
+  });
+  assert.equal(adaptiveResult.crop.mode, 'adaptive-canvas');
+  assert.equal((await sharp(adaptiveResult.buffer).metadata()).width, 390);
+  assert.equal((await sharp(adaptiveResult.buffer).metadata()).height, 567);
+  assert.ok(
+    Math.abs(adaptiveResult.foreground.metrics.scaleX - adaptiveResult.foreground.metrics.scaleY) < 0.002,
+    `${background} must preserve the person's aspect ratio`
+  );
+  const corner = await sharp(adaptiveResult.buffer)
+    .extract({ left: 0, top: 0, width: 1, height: 1 })
+    .removeAlpha()
+    .raw()
+    .toBuffer();
+  const expected = background.match(/[a-f\d]{2}/gi).map(value => Number.parseInt(value, 16));
+  expected.forEach((channel, index) => {
+    assert.ok(Math.abs(corner[index] - channel) <= 20, `${background} canvas background channel ${index}`);
+  });
+}
+
+await assert.rejects(
+  processPassportPortrait({
+    buffer: closeSource,
+    targetSpec: closeSpec,
+    background: 'original',
+    enhance: false,
+    faceDetector: async () => closeDetection,
+    personSegmenter: closeSegmenter
+  }),
+  error => error.code === 'insufficient_portrait_space'
+);
+
+const clippedHeadDetection = {
+  ...closeDetection,
+  face: {
+    ...closeDetection.face,
+    box: { ...closeDetection.face.box, y: 20 },
+    eyeCenter: { x: 325, y: 230 }
+  }
+};
+await assert.rejects(
+  processPassportPortrait({
+    buffer: closeSource,
+    targetSpec: closeSpec,
+    background: '#FFFFFF',
+    enhance: false,
+    faceDetector: async () => clippedHeadDetection,
+    personSegmenter: closeSegmenter
+  }),
+  error => error.code === 'insufficient_portrait_space'
+);
+
 console.log('PASS mock alpha composites foreground onto white, blue and red backgrounds');
 console.log('PASS crop and resize keep the portrait mask geometrically aligned');
 console.log('PASS invalid segmentation masks fail with a specific Chinese 422 error');
 console.log('PASS preserve-original mode skips person segmentation');
+console.log('PASS close but complete portraits adapt onto white, blue and red canvases without stretching');
+console.log('PASS the same close portrait remains strict with original background');
+console.log('PASS adaptive canvas rejects a genuinely clipped head');

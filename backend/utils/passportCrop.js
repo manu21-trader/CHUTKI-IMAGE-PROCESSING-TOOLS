@@ -16,7 +16,7 @@ const targetHeadRatio = (requirement, outputHeight) => {
   return clamp((requirement?.headSizePercentage || 68) / 100, 0.42, 0.74);
 };
 
-export const calculatePassportCrop = ({ imageWidth, imageHeight, face, targetSpec }) => {
+const readFaceGeometry = ({ imageWidth, imageHeight, face, targetSpec }) => {
   if (!finitePositive(imageWidth) || !finitePositive(imageHeight) || !face?.box) {
     throw new PassportPhotoError('invalid_face_geometry', '无法读取有效的人脸位置，请重新上传清晰的正面照片。');
   }
@@ -32,24 +32,46 @@ export const calculatePassportCrop = ({ imageWidth, imageHeight, face, targetSpe
     throw new PassportPhotoError('invalid_passport_dimensions', '无法确定证件照目标尺寸。');
   }
 
-  const requirement = targetSpec.countryRequirement;
-  const aspectRatio = outputWidth / outputHeight;
-  const faceCenterX = x + faceWidth / 2;
-
-  // BlazeFace bounds cover the visible face rather than hair and crown. Expand
-  // upward/downward before applying the country-specific head-height target.
   const headTop = y - faceHeight * 0.18;
   const chinY = y + faceHeight * 1.05;
-  const estimatedHeadHeight = chinY - headTop;
+  const eyeY = Number.isFinite(face.eyeCenter?.y)
+    ? face.eyeCenter.y
+    : y + faceHeight * 0.42;
+
+  return {
+    x,
+    y,
+    faceWidth,
+    faceHeight,
+    faceCenterX: x + faceWidth / 2,
+    eyeY,
+    headTop,
+    chinY,
+    estimatedHeadHeight: chinY - headTop,
+    requirement: targetSpec.countryRequirement,
+    outputWidth,
+    outputHeight
+  };
+};
+
+export const calculatePassportCrop = ({ imageWidth, imageHeight, face, targetSpec }) => {
+  const {
+    faceCenterX,
+    eyeY,
+    headTop,
+    chinY,
+    estimatedHeadHeight,
+    requirement,
+    outputWidth,
+    outputHeight
+  } = readFaceGeometry({ imageWidth, imageHeight, face, targetSpec });
+  const aspectRatio = outputWidth / outputHeight;
   const desiredHeadRatio = targetHeadRatio(requirement, outputHeight);
   const cropHeightFloat = estimatedHeadHeight / desiredHeadRatio;
   const cropWidthFloat = cropHeightFloat * aspectRatio;
 
   if (cropWidthFloat > imageWidth || cropHeightFloat > imageHeight) throw cropError();
 
-  const eyeY = Number.isFinite(face.eyeCenter?.y)
-    ? face.eyeCenter.y
-    : y + faceHeight * 0.42;
   // Existing country data expresses eye height from the bottom edge.
   const eyeFromTopRatio = 1 - clamp((requirement?.eyeLevelPercentage || 58) / 100, 0.45, 0.65);
   const preferredTop = eyeY - cropHeightFloat * eyeFromTopRatio;
@@ -97,6 +119,68 @@ export const calculatePassportCrop = ({ imageWidth, imageHeight, face, targetSpe
       chinToBottom,
       horizontalFacePosition,
       eyePositionFromTop: (eyeY - top) / height
+    }
+  };
+};
+
+export const calculateAdaptivePortraitLayout = ({ imageWidth, imageHeight, face, targetSpec }) => {
+  const geometry = readFaceGeometry({ imageWidth, imageHeight, face, targetSpec });
+  const {
+    faceCenterX,
+    eyeY,
+    headTop,
+    chinY,
+    estimatedHeadHeight,
+    requirement
+  } = geometry;
+  const outputWidth = targetSpec?.pixelWidth;
+  const outputHeight = targetSpec?.pixelHeight;
+  if (!finitePositive(outputWidth) || !finitePositive(outputHeight)) {
+    throw new PassportPhotoError('invalid_passport_dimensions', '无法确定证件照目标像素尺寸。');
+  }
+
+  // A new background can replace missing surrounding space, but it cannot
+  // reconstruct a crown or chin that was absent at capture. Side truncation is
+  // checked against the segmentation mask after the final layout is known.
+  if (headTop < 0 || chinY > imageHeight) {
+    throw cropError();
+  }
+
+  const desiredHeadRatio = targetHeadRatio(requirement, geometry.outputHeight);
+  const desiredHeadHeight = outputHeight * desiredHeadRatio;
+  const scale = desiredHeadHeight / estimatedHeadHeight;
+  const eyeFromTopRatio = 1 - clamp((requirement?.eyeLevelPercentage || 58) / 100, 0.45, 0.65);
+  const offsetX = outputWidth / 2 - faceCenterX * scale;
+  const offsetY = outputHeight * eyeFromTopRatio - eyeY * scale;
+
+  if (![scale, offsetX, offsetY].every(Number.isFinite) || scale <= 0) throw cropError();
+
+  const transformedHeadTop = headTop * scale + offsetY;
+  const transformedChin = chinY * scale + offsetY;
+  const headTopWhitespace = transformedHeadTop / outputHeight;
+  const chinToBottom = (outputHeight - transformedChin) / outputHeight;
+  const horizontalFacePosition = (faceCenterX * scale + offsetX) / outputWidth;
+  if (headTopWhitespace < 0.025 || chinToBottom < 0.09 ||
+      horizontalFacePosition < 0.49 || horizontalFacePosition > 0.51) {
+    throw cropError();
+  }
+
+  return {
+    mode: 'adaptive-canvas',
+    scale,
+    offsetX,
+    offsetY,
+    outputWidth,
+    outputHeight,
+    source: { width: imageWidth, height: imageHeight },
+    metrics: {
+      targetAspectRatio: outputWidth / outputHeight,
+      headHeightRatio: desiredHeadRatio,
+      headTopWhitespace,
+      chinToBottom,
+      horizontalFacePosition,
+      eyePositionFromTop: (eyeY * scale + offsetY) / outputHeight,
+      uniformScale: scale
     }
   };
 };

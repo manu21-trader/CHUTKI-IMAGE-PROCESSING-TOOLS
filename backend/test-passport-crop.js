@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { selectSingleFace } from './services/faceDetection.js';
-import { calculatePassportCrop } from './utils/passportCrop.js';
+import {
+  calculateAdaptivePortraitLayout,
+  calculatePassportCrop
+} from './utils/passportCrop.js';
 import { resolvePassportPhotoSpec } from './utils/passportPhoto.js';
 
 const imageWidth = 1200;
@@ -26,6 +29,13 @@ for (const country of ['CN', 'GB', 'CA', 'US']) {
   assert.ok(crop.left >= 0 && crop.top >= 0);
   assert.ok(crop.left + crop.width <= imageWidth);
   assert.ok(crop.top + crop.height <= imageHeight);
+
+  const adaptive = calculateAdaptivePortraitLayout({ imageWidth, imageHeight, face, targetSpec });
+  assert.equal(adaptive.mode, 'adaptive-canvas');
+  assert.ok(adaptive.metrics.horizontalFacePosition >= 0.49 && adaptive.metrics.horizontalFacePosition <= 0.51);
+  assert.ok(adaptive.metrics.headTopWhitespace >= 0.025);
+  assert.ok(adaptive.metrics.chinToBottom >= 0.09);
+  assert.ok(adaptive.metrics.headHeightRatio >= 0.42 && adaptive.metrics.headHeightRatio <= 0.74);
 }
 
 assert.throws(
@@ -48,5 +58,6 @@ assert.throws(
 
 console.log('PASS CN, GB, CA and US crop aspect ratios are correct');
 console.log('PASS face is horizontally centered with top and chin/shoulder margins');
+console.log('PASS adaptive CN, GB, CA and US layouts preserve head and eye geometry');
 console.log('PASS no-face and multiple-face results never fall back to center crop');
 console.log('PASS insufficient source space returns a specific framing error');

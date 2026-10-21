@@ -1,8 +1,10 @@
 import sharp from 'sharp';
-import { calculatePassportCrop } from '../utils/passportCrop.js';
 import {
-  compositeRgbWithBackground,
-  prepareCroppedMask,
+  calculateAdaptivePortraitLayout,
+  calculatePassportCrop
+} from '../utils/passportCrop.js';
+import {
+  prepareAdaptiveForeground,
   resolvePassportBackground
 } from '../utils/passportBackground.js';
 import { detectPrimaryFace, segmentPerson } from './faceDetection.js';
@@ -37,45 +39,50 @@ export const processPassportPortrait = async ({
     ? await personSegmenter(buffer, detection)
     : null;
 
-  const crop = calculatePassportCrop({
-    imageWidth: detection.imageWidth,
-    imageHeight: detection.imageHeight,
-    face: detection.face,
-    targetSpec
-  });
   const width = targetSpec.pixelWidth;
   const height = targetSpec.pixelHeight;
-  const portrait = createPortraitPipeline({ buffer, crop, width, height, enhance });
 
   let outputBuffer;
+  let crop;
+  let foreground = null;
   if (backgroundPreset.mode === 'original') {
+    crop = calculatePassportCrop({
+      imageWidth: detection.imageWidth,
+      imageHeight: detection.imageHeight,
+      face: detection.face,
+      targetSpec
+    });
+    const portrait = createPortraitPipeline({ buffer, crop, width, height, enhance });
     outputBuffer = await portrait
       .flatten({ background: '#FFFFFF' })
       .jpeg({ quality: 95, mozjpeg: true })
       .toBuffer();
   } else {
-    const { data: rgb } = await portrait.raw().toBuffer({ resolveWithObject: true });
-    const alpha = await prepareCroppedMask({
-      mask: segmentation.mask,
-      maskWidth: segmentation.width,
-      maskHeight: segmentation.height,
+    crop = calculateAdaptivePortraitLayout({
       imageWidth: detection.imageWidth,
       imageHeight: detection.imageHeight,
-      crop,
-      outputWidth: width,
-      outputHeight: height
+      face: detection.face,
+      targetSpec
     });
-    const composited = compositeRgbWithBackground({
-      rgb,
-      alpha,
-      width,
-      height,
-      backgroundColor: backgroundPreset.color
+    foreground = await prepareAdaptiveForeground({
+      buffer,
+      segmentation,
+      detection,
+      layout: crop,
+      enhance
     });
-    outputBuffer = await sharp(composited, { raw: { width, height, channels: 3 } })
+    outputBuffer = await sharp({
+      create: { width, height, channels: 3, background: backgroundPreset.color }
+    })
+      .composite([{
+        input: foreground.data,
+        raw: { width: foreground.width, height: foreground.height, channels: 4 },
+        left: foreground.left,
+        top: foreground.top
+      }])
       .jpeg({ quality: 95, mozjpeg: true })
       .toBuffer();
   }
 
-  return { buffer: outputBuffer, detection, crop, segmentation, backgroundPreset };
+  return { buffer: outputBuffer, detection, crop, segmentation, foreground, backgroundPreset };
 };
